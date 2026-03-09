@@ -10,35 +10,8 @@ fn find_nodes<'a>(nodes: &'a [Node], pred: &dyn Fn(&Node) -> bool) -> Vec<&'a No
         if pred(node) {
             found.push(node);
         }
-        match node {
-            Node::Paragraph(b)
-            | Node::Heading(b)
-            | Node::List(b)
-            | Node::ListItem(b)
-            | Node::Blockquote(b)
-            | Node::Html(b)
-            | Node::Table(b)
-            | Node::TableRow(b)
-            | Node::TableCell(b)
-            | Node::Emphasis(b)
-            | Node::Strong(b)
-            | Node::Strikethrough(b)
-            | Node::ThematicBreak(b) => {
-                found.extend(find_nodes(&b.children, pred));
-            }
-            Node::Link(l) => {
-                found.extend(find_nodes(&l.children, pred));
-            }
-            Node::Image(i) => {
-                found.extend(find_nodes(&i.children, pred));
-            }
-            Node::Component(c) => {
-                found.extend(find_nodes(&c.children, pred));
-            }
-            Node::FootnoteDefinition(f) => {
-                found.extend(find_nodes(&f.children, pred));
-            }
-            _ => {}
+        if let Some(children) = node.children() {
+            found.extend(find_nodes(children, pred));
         }
     }
     found

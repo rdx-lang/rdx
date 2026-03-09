@@ -100,27 +100,8 @@ pub fn parse_with_defaults(input: &str) -> Root {
 pub fn walk_mut(nodes: &mut Vec<Node>, f: &mut dyn FnMut(&mut Node)) {
     for node in nodes.iter_mut() {
         f(node);
-        match node {
-            Node::Paragraph(b)
-            | Node::Heading(b)
-            | Node::List(b)
-            | Node::ListItem(b)
-            | Node::Blockquote(b)
-            | Node::Html(b)
-            | Node::Table(b)
-            | Node::TableRow(b)
-            | Node::TableCell(b)
-            | Node::Emphasis(b)
-            | Node::Strong(b)
-            | Node::Strikethrough(b)
-            | Node::ThematicBreak(b) => {
-                walk_mut(&mut b.children, f);
-            }
-            Node::Link(l) => walk_mut(&mut l.children, f),
-            Node::Image(i) => walk_mut(&mut i.children, f),
-            Node::Component(c) => walk_mut(&mut c.children, f),
-            Node::FootnoteDefinition(n) => walk_mut(&mut n.children, f),
-            _ => {}
+        if let Some(children) = node.children_mut() {
+            walk_mut(children, f);
         }
     }
 }
@@ -129,27 +110,8 @@ pub fn walk_mut(nodes: &mut Vec<Node>, f: &mut dyn FnMut(&mut Node)) {
 pub fn walk<'a>(nodes: &'a [Node], f: &mut dyn FnMut(&'a Node)) {
     for node in nodes {
         f(node);
-        match node {
-            Node::Paragraph(b)
-            | Node::Heading(b)
-            | Node::List(b)
-            | Node::ListItem(b)
-            | Node::Blockquote(b)
-            | Node::Html(b)
-            | Node::Table(b)
-            | Node::TableRow(b)
-            | Node::TableCell(b)
-            | Node::Emphasis(b)
-            | Node::Strong(b)
-            | Node::Strikethrough(b)
-            | Node::ThematicBreak(b) => {
-                walk(&b.children, f);
-            }
-            Node::Link(l) => walk(&l.children, f),
-            Node::Image(i) => walk(&i.children, f),
-            Node::Component(c) => walk(&c.children, f),
-            Node::FootnoteDefinition(n) => walk(&n.children, f),
-            _ => {}
+        if let Some(children) = node.children() {
+            walk(children, f);
         }
     }
 }

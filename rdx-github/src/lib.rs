@@ -84,47 +84,19 @@ struct ResolvedConfig<'a> {
 fn transform_nodes(nodes: &mut Vec<Node>, cfg: &ResolvedConfig) {
     let mut i = 0;
     while i < nodes.len() {
-        // First recurse into children of non-text nodes
-        match &mut nodes[i] {
-            Node::Text(_) => {
-                // Handle below
+        // Skip Link/Image children to avoid creating nested links
+        if matches!(&nodes[i], Node::Link(_) | Node::Image(_)) {
+            i += 1;
+            continue;
+        }
+
+        // Recurse into children of non-text nodes
+        if !matches!(&nodes[i], Node::Text(_)) {
+            if let Some(children) = nodes[i].children_mut() {
+                transform_nodes(children, cfg);
             }
-            Node::Paragraph(b)
-            | Node::Heading(b)
-            | Node::List(b)
-            | Node::ListItem(b)
-            | Node::Blockquote(b)
-            | Node::Html(b)
-            | Node::Table(b)
-            | Node::TableRow(b)
-            | Node::TableCell(b)
-            | Node::Emphasis(b)
-            | Node::Strong(b)
-            | Node::Strikethrough(b)
-            | Node::ThematicBreak(b) => {
-                transform_nodes(&mut b.children, cfg);
-                i += 1;
-                continue;
-            }
-            // Skip Link/Image children to avoid creating nested links
-            Node::Link(_) | Node::Image(_) => {
-                i += 1;
-                continue;
-            }
-            Node::Component(c) => {
-                transform_nodes(&mut c.children, cfg);
-                i += 1;
-                continue;
-            }
-            Node::FootnoteDefinition(f) => {
-                transform_nodes(&mut f.children, cfg);
-                i += 1;
-                continue;
-            }
-            _ => {
-                i += 1;
-                continue;
-            }
+            i += 1;
+            continue;
         }
 
         // Extract text node, try to expand

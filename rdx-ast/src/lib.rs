@@ -200,6 +200,56 @@ pub struct ErrorNode {
     pub position: Position,
 }
 
+impl Node {
+    /// Returns a mutable reference to this node's children, if it has any.
+    pub fn children_mut(&mut self) -> Option<&mut Vec<Node>> {
+        match self {
+            Node::Paragraph(b)
+            | Node::Heading(b)
+            | Node::List(b)
+            | Node::ListItem(b)
+            | Node::Blockquote(b)
+            | Node::Html(b)
+            | Node::Table(b)
+            | Node::TableRow(b)
+            | Node::TableCell(b)
+            | Node::Emphasis(b)
+            | Node::Strong(b)
+            | Node::Strikethrough(b)
+            | Node::ThematicBreak(b) => Some(&mut b.children),
+            Node::Link(l) => Some(&mut l.children),
+            Node::Image(i) => Some(&mut i.children),
+            Node::Component(c) => Some(&mut c.children),
+            Node::FootnoteDefinition(n) => Some(&mut n.children),
+            _ => None,
+        }
+    }
+
+    /// Returns a reference to this node's children, if it has any.
+    pub fn children(&self) -> Option<&[Node]> {
+        match self {
+            Node::Paragraph(b)
+            | Node::Heading(b)
+            | Node::List(b)
+            | Node::ListItem(b)
+            | Node::Blockquote(b)
+            | Node::Html(b)
+            | Node::Table(b)
+            | Node::TableRow(b)
+            | Node::TableCell(b)
+            | Node::Emphasis(b)
+            | Node::Strong(b)
+            | Node::Strikethrough(b)
+            | Node::ThematicBreak(b) => Some(&b.children),
+            Node::Link(l) => Some(&l.children),
+            Node::Image(i) => Some(&i.children),
+            Node::Component(c) => Some(&c.children),
+            Node::FootnoteDefinition(n) => Some(&n.children),
+            _ => None,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

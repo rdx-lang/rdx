@@ -337,13 +337,14 @@ pub(crate) fn parse_markdown_region(
 
                 // Regular HTML — add to current HtmlBlock frame or emit standalone
                 if let Some(frame) = stack.last_mut()
-                    && matches!(frame.kind, FrameKind::HtmlBlock) {
-                        frame.children.push(Node::Text(TextNode {
-                            value: html_str,
-                            position: sm.position(abs_start, abs_end),
-                        }));
-                        continue;
-                    }
+                    && matches!(frame.kind, FrameKind::HtmlBlock)
+                {
+                    frame.children.push(Node::Text(TextNode {
+                        value: html_str,
+                        position: sm.position(abs_start, abs_end),
+                    }));
+                    continue;
+                }
                 let node = Node::Html(std_block(
                     vec![Node::Text(TextNode {
                         value: html_str,
@@ -357,9 +358,10 @@ pub(crate) fn parse_markdown_region(
             Event::TaskListMarker(checked) => {
                 // Set the checked field on the current ListItem frame
                 if let Some(frame) = stack.last_mut()
-                    && let FrameKind::ListItem { checked: ref mut c } = frame.kind {
-                        *c = Some(checked);
-                    }
+                    && let FrameKind::ListItem { checked: ref mut c } = frame.kind
+                {
+                    *c = Some(checked);
+                }
             }
 
             Event::FootnoteReference(label) => {

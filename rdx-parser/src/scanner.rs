@@ -241,18 +241,19 @@ pub(crate) fn scan_segments(body: &str, base_offset: usize, sm: &SourceMap) -> V
             {
                 // Stray closing tag at top level
                 if let Some((name, tag_end)) = tags::try_parse_close_tag(body, content_pos)
-                    && is_whitespace_until_eol(body, tag_end) {
-                        flush_markdown(&mut segments, md_start, line_start, base_offset);
-                        segments.push(Segment::Error {
-                            message: format!("Unexpected closing tag </{}>", name),
-                            raw: body[content_pos..tag_end].to_string(),
-                            start: base_offset + content_pos,
-                            end: base_offset + tag_end,
-                        });
-                        pos = skip_to_next_line(body, tag_end);
-                        md_start = pos;
-                        continue;
-                    }
+                    && is_whitespace_until_eol(body, tag_end)
+                {
+                    flush_markdown(&mut segments, md_start, line_start, base_offset);
+                    segments.push(Segment::Error {
+                        message: format!("Unexpected closing tag </{}>", name),
+                        raw: body[content_pos..tag_end].to_string(),
+                        start: base_offset + content_pos,
+                        end: base_offset + tag_end,
+                    });
+                    pos = skip_to_next_line(body, tag_end);
+                    md_start = pos;
+                    continue;
+                }
             }
         }
 
@@ -366,23 +367,26 @@ fn find_matching_close(
                 && bytes[content_pos + 2].is_ascii_uppercase()
             {
                 if let Some((name, tag_end)) = tags::try_parse_close_tag(input, content_pos)
-                    && name == tag_name && is_whitespace_until_eol(input, tag_end) {
-                        depth -= 1;
-                        if depth == 0 {
-                            return Ok((line_start, tag_end));
-                        }
+                    && name == tag_name
+                    && is_whitespace_until_eol(input, tag_end)
+                {
+                    depth -= 1;
+                    if depth == 0 {
+                        return Ok((line_start, tag_end));
                     }
+                }
             }
             // Opening tag with same name (nested same-type)
-            else if content_pos + 1 < input.len() && bytes[content_pos + 1].is_ascii_uppercase()
+            else if content_pos + 1 < input.len()
+                && bytes[content_pos + 1].is_ascii_uppercase()
                 && let Ok(Some((tag, _))) =
                     tags::try_parse_open_tag(input, content_pos, base_offset, sm)
-                    && tag.name == tag_name
-                        && !tag.self_closing
-                        && is_whitespace_until_eol(input, tag.end - base_offset)
-                    {
-                        depth += 1;
-                    }
+                && tag.name == tag_name
+                && !tag.self_closing
+                && is_whitespace_until_eol(input, tag.end - base_offset)
+            {
+                depth += 1;
+            }
         }
 
         while pos < input.len() && bytes[pos] != b'\n' {

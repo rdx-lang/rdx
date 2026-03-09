@@ -68,13 +68,15 @@ fn collect_headings(nodes: &[Node], min: u8, max: u8) -> Vec<TocEntry> {
     walk(nodes, &mut |node| {
         if let Node::Heading(h) = node
             && let Some(depth) = h.depth
-                && depth >= min && depth <= max {
-                    entries.push(TocEntry {
-                        depth,
-                        text: collect_text(&h.children),
-                        id: h.id.clone(),
-                    });
-                }
+            && depth >= min
+            && depth <= max
+        {
+            entries.push(TocEntry {
+                depth,
+                text: collect_text(&h.children),
+                id: h.id.clone(),
+            });
+        }
     });
     entries
 }
