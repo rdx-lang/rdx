@@ -1,0 +1,9 @@
+[workspace]
+resolver = "2"
+members = ["rdx-ast", "rdx-parser", "rdx-transform", "rdx-github"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rdx-lang/rdx"

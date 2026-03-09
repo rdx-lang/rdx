@@ -1,0 +1,158 @@
+---
+title: RDX Kitchen Sink
+version: 2.1
+author: Jane Doe
+tags:
+  - documentation
+  - components
+---
+
+# {$title}
+
+Welcome to version {$version} of the documentation, authored by {$author}.
+
+## Components
+
+### Self-Closing Components
+
+<HeroImage src="/assets/hero.png" alt="Hero banner" />
+
+<Divider/>
+
+<Spacer height={64} />
+
+### Block Components
+
+<Notice type="warning" dismissible>
+  This API has been **deprecated** since version {$version}.
+  Please migrate to the new endpoint.
+</Notice>
+
+<Card title="Getting Started" theme='dark'>
+  Follow the guide below to integrate RDX into your project.
+
+  <Badge status="new" />
+</Card>
+
+### Deeply Nested Components
+
+<Layout direction="horizontal">
+  <Sidebar width={240}>
+    <NavGroup label="Docs">
+      <NavItem href="/intro" active={true}>Introduction</NavItem>
+      <NavItem href="/api" active={false}>API Reference</NavItem>
+    </NavGroup>
+  </Sidebar>
+  <MainContent>
+    This is the main content area.
+  </MainContent>
+</Layout>
+
+## Attribute Types
+
+### String Attributes (Double and Single Quotes)
+
+<Button label="Click Me" theme='dark' />
+
+### String Escaping (Backslash and Alternate Quotes)
+
+<Tooltip text="She said \"hello\"" />
+<Tooltip text='It\'s a beautiful day' />
+<Tooltip text='She said "hello"' />
+
+### Primitive Attributes (Numbers, Booleans, Null)
+
+<Pagination activePage={2} isInteractive={true} showArrows={false} ref={null} />
+<Slider min={-3.14} max={2.5e10} step={0.01} />
+
+### Boolean Shorthand
+
+<Input disabled />
+<Checkbox checked required />
+
+### JSON Object Attributes
+
+<Chart config={{
+  "type": "bar",
+  "title": "Monthly Revenue",
+  "data": [10, 20, 30, 40],
+  "options": {
+    "legend": true,
+    "animate": false
+  }
+}} />
+
+### JSON Array Attributes
+
+<TagList items={{["alpha", "beta", "gamma"]}} />
+
+<DataGrid rows={{[
+  {"id": 1, "name": "Alice"},
+  {"id": 2, "name": "Bob"}
+]}} />
+
+### Variable Attributes
+
+<Button label={$frontmatter.buttonText} />
+<Heading level={$config.heading_level} />
+
+### Mixed Attributes on a Single Component
+
+<DataTable
+  title="User List"
+  page={1}
+  sortable
+  columns={{["Name", "Email", "Role"]}}
+  onSort={$handlers.sort_users}
+/>
+
+## Variable Interpolation
+
+The current document title is **{$title}** (version {$version}).
+
+Nested paths work too: {$config.theme_name}.
+
+## Escaping
+
+Literal variable syntax: \{$not_a_variable}
+
+Literal double braces: \{{ and \}}
+
+Literal single brace: \{
+
+Literal backslash: \\
+
+## Code Constructs (No Interpolation)
+
+Variables inside inline code are literal: `{$title}` renders as-is.
+
+Fenced code blocks are also literal:
+
+```rdx
+<Badge status="beta" active={true}>New Feature</Badge>
+{$this_is_not_interpolated}
+```
+
+```ts
+const x: number = 42;
+// {$also_not_interpolated}
+```
+
+## Links and URLs
+
+Read the [RDX Specification](https://github.com/rdx-lang/rdx/blob/main/SPECIFICATION.md) for details.
+
+See the [API docs](/api/reference) or visit <https://rdx-lang.dev>.
+
+Link with a variable: [Version {$version} changelog](/changelog/{$version}).
+
+<Link href="https://example.com" target="_blank">External Link</Link>
+
+<NavItem href={$config.docs_url} icon="book">Documentation</NavItem>
+
+## Inline Components
+
+This paragraph contains an inline <Badge status="new" /> component mid-sentence.
+
+You can also use <Icon name="check" size={16} /> icons inline with text.
+

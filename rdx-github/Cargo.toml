@@ -1,0 +1,11 @@
+[package]
+name = "rdx-github"
+description = "GitHub references transform for RDX — converts #123, @user, and commit SHAs to links"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+rdx-ast = { path = "../rdx-ast" }
+rdx-transform = { path = "../rdx-transform" }
