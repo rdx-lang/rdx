@@ -191,7 +191,13 @@ jobs:
 
       - name: Publish @rdx-lang/wasm
         working-directory: rdx-wasm/npm
-        run: npm publish --access public
+        run: |
+          VERSION=$(jq -r '.version' package.json)
+          if npm view @rdx-lang/wasm@$VERSION version 2>/dev/null; then
+            echo "@rdx-lang/wasm@$VERSION already published — skipping"
+          else
+            npm publish --access public
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -207,7 +213,13 @@ jobs:
 
       - name: Publish @rdx-lang/node
         working-directory: rdx-node/npm
-        run: npm publish --access public
+        run: |
+          VERSION=$(jq -r '.version' package.json)
+          if npm view @rdx-lang/node@$VERSION version 2>/dev/null; then
+            echo "@rdx-lang/node@$VERSION already published — skipping"
+          else
+            npm publish --access public
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
