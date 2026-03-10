@@ -7,5 +7,5 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-rdx-ast = { path = "../rdx-ast" }
-rdx-transform = { path = "../rdx-transform" }
+rdx-ast.workspace = true
+rdx-transform.workspace = true

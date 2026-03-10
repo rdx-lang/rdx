@@ -5,7 +5,7 @@ Python bindings for the [RDX](https://github.com/rdx-lang/rdx) parser via [PyO3]
 ## Installation
 
 ```sh
-pip install rdx
+pip install rdx-parser
 ```
 
 ## Usage

@@ -18,7 +18,7 @@ npm install @rdx-lang/node
 
 **Python**
 ```sh
-pip install rdx
+pip install rdx-parser
 ```
 
 **Browser / Deno / Edge**
@@ -58,7 +58,7 @@ console.log(ast.children[0].type); // heading
 | [`rdx-github`](rdx-github/) | Optional transform — converts `#123`, `@user`, and commit SHAs to links |
 | [`rdx-wasm`](rdx-wasm/) | WebAssembly bindings for browsers, Deno, and edge runtimes |
 | [`rdx-node`](rdx-node/) | Native Node.js bindings via napi-rs |
-| [`rdx-py`](rdx-py/) | Python bindings via PyO3 — `pip install rdx` |
+| [`rdx-py`](rdx-py/) | Python bindings via PyO3 — `pip install rdx-parser` |
 
 ## What RDX parses
 

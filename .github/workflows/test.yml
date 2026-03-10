@@ -1,0 +1,68 @@
+# Reusable test workflow: lint, format, docs, cross-platform tests.
+#
+# Called by:
+#   - ci.yml      (PR checks)
+#   - release.yml (pre-publish gate)
+#
+# Not triggered directly — use workflow_call only.
+
+name: Test
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  lint:
+    name: Lint, Format & Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: lint
+
+      - name: Check formatting
+        run: cargo fmt --all --check
+
+      - name: Run clippy (all crates)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Build docs
+        run: cargo doc --workspace --no-deps
+
+      - name: Run doctests
+        run: cargo test --workspace --doc
+
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: test
+
+      # Test pure Rust crates only (skip native binding crates that need extra tooling)
+      - name: Run tests
+        run: cargo test -p rdx-ast -p rdx-parser -p rdx-transform -p rdx-github -p rdx-schema

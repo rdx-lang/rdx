@@ -1,0 +1,298 @@
+name: Release
+run-name: Release ${{ github.ref_name }}
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  validate-version:
+    name: Validate Version Tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Validate tag against Cargo.toml
+        id: version
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          TAG_VERSION="${TAG#v}"
+
+          CARGO_VERSION=$(cargo metadata --no-deps --format-version=1 \
+            | jq -r '.packages[] | select(.name == "rdx-ast") | .version')
+          CARGO_BASE=$(echo "$CARGO_VERSION" | grep -oP '^\d+\.\d+\.\d+')
+
+          echo "Tag version: $TAG_VERSION"
+          echo "Cargo.toml version: $CARGO_VERSION"
+          echo "Cargo.toml base: $CARGO_BASE"
+
+          if [[ ! "$TAG_VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+)(-[a-zA-Z]+\.[0-9]+)?$ ]]; then
+            echo "::error::Invalid tag format '$TAG'. Expected: vX.Y.Z or vX.Y.Z-label.N"
+            exit 1
+          fi
+
+          TAG_BASE="${BASH_REMATCH[1]}"
+
+          if [[ "$TAG_BASE" != "$CARGO_BASE" ]]; then
+            echo "::error::Base version mismatch! Tag '$TAG_BASE' != Cargo.toml '$CARGO_BASE'"
+            exit 1
+          fi
+
+          echo "version=$TAG_VERSION" >> $GITHUB_OUTPUT
+
+  ci:
+    name: CI
+    needs: validate-version
+    uses: ./.github/workflows/ci.yml
+
+  publish-crates:
+    name: Publish to crates.io
+    needs: [validate-version, ci]
+    runs-on: ubuntu-latest
+    environment: crates-io
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set version from tag
+        run: |
+          VERSION="${{ needs.validate-version.outputs.version }}"
+          CURRENT=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name == "rdx-ast") | .version')
+          if [[ "$VERSION" != "$CURRENT" ]]; then
+            # Update workspace.package version
+            sed -i "0,/^version = \".*\"/s//version = \"$VERSION\"/" Cargo.toml
+            # Update workspace.dependencies versions
+            sed -i "s/version = \"$CURRENT\"/version = \"$VERSION\"/g" Cargo.toml
+            echo "Updated workspace version: $CURRENT -> $VERSION"
+          else
+            echo "Version already matches, no change needed"
+          fi
+
+      # Publish in dependency order:
+      #   Tier 1: rdx-ast (no deps)
+      #   Tier 2: rdx-parser, rdx-schema (depend on rdx-ast)
+      #   Tier 3: rdx-transform, rdx-github (depend on rdx-ast + rdx-parser)
+      #   Tier 4: rdx-wasm, rdx-node, rdx-py (binding crates, depend on core crates)
+      - name: Publish to crates.io
+        run: |
+          TIER1="rdx-ast"
+          TIER2="rdx-parser rdx-schema"
+          TIER3="rdx-transform rdx-github"
+          TIER4="rdx-wasm rdx-node rdx-py"
+
+          is_published() {
+            cargo search "$1" --limit 1 2>/dev/null | grep -q "\"$2\""
+          }
+
+          wait_for() {
+            local crate="$1" version="$2"
+            echo -n "  Waiting for $crate@$version..."
+            for i in $(seq 1 60); do
+              if is_published "$crate" "$version"; then
+                echo " ready"
+                return 0
+              fi
+              sleep 5
+            done
+            echo " timed out!"
+            return 1
+          }
+
+          publish_tier() {
+            local tier_name="$1"; shift
+            local crates=("$@")
+            local need_wait=()
+
+            echo "::group::Tier: $tier_name"
+            for crate in "${crates[@]}"; do
+              VERSION=$(cargo metadata --no-deps --format-version=1 \
+                | jq -r --arg name "$crate" '.packages[] | select(.name == $name) | .version')
+              if is_published "$crate" "$VERSION"; then
+                echo "  $crate@$VERSION already published — skipping"
+              else
+                echo "  Publishing $crate@$VERSION..."
+                cargo publish -p "$crate" --allow-dirty --no-verify
+                need_wait+=("$crate:$VERSION")
+              fi
+            done
+
+            for entry in "${need_wait[@]}"; do
+              wait_for "${entry%%:*}" "${entry##*:}"
+            done
+            echo "::endgroup::"
+          }
+
+          publish_tier "1 (ast)"          $TIER1
+          publish_tier "2 (parser+schema)" $TIER2
+          publish_tier "3 (transforms)"    $TIER3
+          publish_tier "4 (bindings)"      $TIER4
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  publish-npm:
+    name: Publish npm packages
+    needs: [validate-version, publish-crates]
+    runs-on: ubuntu-latest
+    environment: npm
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install napi-rs CLI
+        run: npm install -g @napi-rs/cli
+
+      - name: Sync npm package versions from tag
+        run: |
+          VERSION="${{ needs.validate-version.outputs.version }}"
+          for pkg in rdx-wasm/npm/package.json rdx-node/npm/package.json; do
+            jq --arg v "$VERSION" '.version = $v' "$pkg" > tmp.json && mv tmp.json "$pkg"
+            echo "Set $pkg version to $VERSION"
+          done
+
+      # Build and publish @rdx-lang/wasm
+      - name: Build WASM package
+        working-directory: rdx-wasm/npm
+        run: |
+          wasm-pack build .. --target web --out-dir npm/wasm-pkg
+          bun build ./src/index.ts --outdir dist --target browser
+          bun x tsc --emitDeclarationOnly
+
+      - name: Publish @rdx-lang/wasm
+        working-directory: rdx-wasm/npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # Build and publish @rdx-lang/node
+      - name: Build Node native addon
+        working-directory: rdx-node
+        run: napi build --release --platform --js index.js --dts index.d.ts
+
+      - name: Stage @rdx-lang/node for publish
+        run: |
+          cp rdx-node/*.node rdx-node/npm/
+          cp rdx-node/index.js rdx-node/index.cjs rdx-node/index.d.ts rdx-node/npm/ 2>/dev/null || true
+
+      - name: Publish @rdx-lang/node
+        working-directory: rdx-node/npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  build-wheels:
+    name: Build wheels (${{ matrix.os }})
+    needs: [validate-version, ci]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync version from tag
+        shell: bash
+        run: |
+          VERSION="${{ needs.validate-version.outputs.version }}"
+          CURRENT=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          # Update pyproject.toml
+          sed -i.bak "s/^version = \".*\"/version = \"$VERSION\"/" rdx-py/pyproject.toml
+          # Update workspace Cargo.toml version + dependencies
+          sed -i.bak "0,/^version = \".*\"/s//version = \"$VERSION\"/" Cargo.toml
+          sed -i.bak "s/version = \"$CURRENT\"/version = \"$VERSION\"/g" Cargo.toml
+          echo "Set versions to $VERSION"
+
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          args: --release --out dist --manifest-path rdx-py/Cargo.toml
+          sccache: "true"
+          manylinux: auto
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}
+          path: dist
+
+  build-sdist:
+    name: Build source distribution
+    needs: validate-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync version from tag
+        run: |
+          VERSION="${{ needs.validate-version.outputs.version }}"
+          CURRENT=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          # Update pyproject.toml
+          sed -i "s/^version = \".*\"/version = \"$VERSION\"/" rdx-py/pyproject.toml
+          # Update workspace Cargo.toml version + dependencies
+          sed -i "0,/^version = \".*\"/s//version = \"$VERSION\"/" Cargo.toml
+          sed -i "s/version = \"$CURRENT\"/version = \"$VERSION\"/g" Cargo.toml
+          echo "Set versions to $VERSION"
+
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist --manifest-path rdx-py/Cargo.toml
+
+      - name: Upload sdist
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-sdist
+          path: dist
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: [validate-version, build-wheels, build-sdist]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/rdx-parser
+    permissions:
+      id-token: write
+    steps:
+      - name: Download all wheels
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          path: dist
+          merge-multiple: true
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

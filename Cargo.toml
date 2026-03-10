@@ -7,3 +7,10 @@ version = "0.1.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rdx-lang/rdx"
+
+[workspace.dependencies]
+rdx-ast = { version = "0.1.0", path = "rdx-ast" }
+rdx-parser = { version = "0.1.0", path = "rdx-parser" }
+rdx-transform = { version = "0.1.0", path = "rdx-transform" }
+rdx-github = { version = "0.1.0", path = "rdx-github" }
+rdx-schema = { version = "0.1.0", path = "rdx-schema" }

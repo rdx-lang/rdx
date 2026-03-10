@@ -3,7 +3,7 @@ requires = ["maturin>=1.7,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "rdx"
+name = "rdx-parser"
 version = "0.1.0"
 description = "RDX parser for Python — parse .rdx documents at Rust speed"
 readme = "README.md"
