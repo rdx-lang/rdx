@@ -142,7 +142,7 @@ No other escape sequences (e.g., `\n`, `\t`) are interpreted by the Parser insid
 
 #### **2.3.3. Primitive Literal Attributes**
 
-Boolean and Number literals **MUST** be enclosed in single curly braces `{}`. Valid contents are restricted strictly to: integers, floats (including negative values and scientific notation, e.g., `-3.14`, `2.5e10`), `true`, `false`, and `null`.
+Boolean and Number literals **MUST** be enclosed in single curly braces `{}`. Valid contents are restricted strictly to: integers, floats (including negative values and scientific notation, e.g., `-2.75`, `2.5e10`), `true`, `false`, and `null`.
 
 ```rdx
 <Pagination activePage={2} isInteractive={true} />

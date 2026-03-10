@@ -167,7 +167,7 @@ fn schema_serializes_to_json() {
     let s = schema();
     let json = serde_json::to_string_pretty(&s).unwrap();
     let deserialized: Schema = serde_json::from_str(&json).unwrap();
-    assert_eq!(deserialized.strict, true);
+    assert!(deserialized.strict);
     assert!(deserialized.components.contains_key("Notice"));
     assert!(deserialized.components.contains_key("Badge"));
 }

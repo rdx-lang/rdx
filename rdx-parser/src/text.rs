@@ -210,10 +210,10 @@ mod tests {
                 if let Node::CodeBlock(t) = node {
                     return Some(t);
                 }
-                if let Node::Paragraph(b) | Node::Blockquote(b) = node {
-                    if let Some(t) = find_code_block(&b.children) {
-                        return Some(t);
-                    }
+                if let Node::Paragraph(b) | Node::Blockquote(b) = node
+                    && let Some(t) = find_code_block(&b.children)
+                {
+                    return Some(t);
                 }
             }
             None

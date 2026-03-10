@@ -73,10 +73,10 @@ fn validate_nodes(
             validate_component(comp, schema, diagnostics, parent_allowed_children);
         }
         // Recurse into non-component nodes that have children
-        if !matches!(node, Node::Component(_)) {
-            if let Some(children) = node.children() {
-                validate_nodes(children, schema, diagnostics, None);
-            }
+        if !matches!(node, Node::Component(_))
+            && let Some(children) = node.children()
+        {
+            validate_nodes(children, schema, diagnostics, None);
         }
     }
 }
@@ -92,16 +92,16 @@ fn validate_component(
     let name = &comp.name;
 
     // Check if this component is allowed as a child of its parent
-    if let Some(allowed) = parent_allowed_children {
-        if !allowed.iter().any(|a| a == name) {
-            diagnostics.push(Diagnostic {
-                severity: Severity::Error,
-                message: format!("<{name}> is not allowed as a child here"),
-                component: name.clone(),
-                line,
-                column,
-            });
-        }
+    if let Some(allowed) = parent_allowed_children
+        && !allowed.iter().any(|a| a == name)
+    {
+        diagnostics.push(Diagnostic {
+            severity: Severity::Error,
+            message: format!("<{name}> is not allowed as a child here"),
+            component: name.clone(),
+            line,
+            column,
+        });
     }
 
     let Some(comp_schema) = schema.components.get(name.as_str()) else {
@@ -186,24 +186,22 @@ fn validate_component(
         }
 
         // Enum value check
-        if prop_schema.prop_type == PropType::Enum {
-            if let (Some(allowed), AttributeValue::String(val)) = (&prop_schema.values, &attr.value)
-            {
-                if !allowed.contains(val) {
-                    diagnostics.push(Diagnostic {
-                        severity: Severity::Error,
-                        message: format!(
-                            "prop `{}` on <{name}> must be one of [{}], got \"{}\"",
-                            attr.name,
-                            allowed.join(", "),
-                            val,
-                        ),
-                        component: name.clone(),
-                        line: attr_line,
-                        column: attr_col,
-                    });
-                }
-            }
+        if prop_schema.prop_type == PropType::Enum
+            && let (Some(allowed), AttributeValue::String(val)) = (&prop_schema.values, &attr.value)
+            && !allowed.contains(val)
+        {
+            diagnostics.push(Diagnostic {
+                severity: Severity::Error,
+                message: format!(
+                    "prop `{}` on <{name}> must be one of [{}], got \"{}\"",
+                    attr.name,
+                    allowed.join(", "),
+                    val,
+                ),
+                component: name.clone(),
+                line: attr_line,
+                column: attr_col,
+            });
         }
     }
 

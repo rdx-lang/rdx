@@ -17,7 +17,7 @@ fn find_nodes<'a>(nodes: &'a [Node], pred: &dyn Fn(&Node) -> bool) -> Vec<&'a No
     found
 }
 
-fn find_components<'a>(nodes: &'a [Node]) -> Vec<&'a ComponentNode> {
+fn find_components(nodes: &[Node]) -> Vec<&ComponentNode> {
     let all = find_nodes(nodes, &|n| matches!(n, Node::Component(_)));
     all.into_iter()
         .filter_map(|n| {
@@ -30,7 +30,7 @@ fn find_components<'a>(nodes: &'a [Node]) -> Vec<&'a ComponentNode> {
         .collect()
 }
 
-fn find_variables<'a>(nodes: &'a [Node]) -> Vec<&'a VariableNode> {
+fn find_variables(nodes: &[Node]) -> Vec<&VariableNode> {
     let all = find_nodes(nodes, &|n| matches!(n, Node::Variable(_)));
     all.into_iter()
         .filter_map(|n| {
@@ -43,7 +43,7 @@ fn find_variables<'a>(nodes: &'a [Node]) -> Vec<&'a VariableNode> {
         .collect()
 }
 
-fn find_errors<'a>(nodes: &'a [Node]) -> Vec<&'a ErrorNode> {
+fn find_errors(nodes: &[Node]) -> Vec<&ErrorNode> {
     let all = find_nodes(nodes, &|n| matches!(n, Node::Error(_)));
     all.into_iter()
         .filter_map(|n| {
@@ -331,7 +331,9 @@ fn primitive_attributes() {
         .find(|c| c.name == "Slider")
         .expect("Slider not found");
     match &slider.attributes[0].value {
-        AttributeValue::Number(n) => assert!((n.as_f64().unwrap() - (-3.14)).abs() < f64::EPSILON),
+        AttributeValue::Number(n) => {
+            assert!((n.as_f64().unwrap() - (-2.75_f64)).abs() < f64::EPSILON)
+        }
         other => panic!("Expected number, got {:?}", other),
     }
     match &slider.attributes[1].value {

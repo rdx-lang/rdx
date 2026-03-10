@@ -317,16 +317,16 @@ fn parse_json_attr(input: &str, pos: usize) -> Result<(AttributeValue, usize), J
                                 Ok((AttributeValue::Array(arr), i + 2))
                             }
                             other => {
-                            return Err(JsonAttrError {
-                                message: format!(
-                                    "JSON attribute must be an object or array, got: {}",
-                                    other
-                                ),
-                                raw: input[pos..i + 2].to_string(),
-                                start: pos,
-                                end: i + 2,
-                            });
-                        }
+                                return Err(JsonAttrError {
+                                    message: format!(
+                                        "JSON attribute must be an object or array, got: {}",
+                                        other
+                                    ),
+                                    raw: input[pos..i + 2].to_string(),
+                                    start: pos,
+                                    end: i + 2,
+                                });
+                            }
                         };
                     }
                     // Wrap in {} for object shorthand
@@ -487,11 +487,11 @@ mod tests {
 
     #[test]
     fn primitive_negative_float() {
-        let root = parse("<Comp x={-3.14} />\n");
+        let root = parse("<Comp x={-2.75} />\n");
         match &root.children[0] {
             Node::Component(c) => match &c.attributes[0].value {
                 AttributeValue::Number(n) => {
-                    assert!((n.as_f64().unwrap() - (-3.14)).abs() < f64::EPSILON)
+                    assert!((n.as_f64().unwrap() - (-2.75_f64)).abs() < f64::EPSILON)
                 }
                 other => panic!("Expected number, got {:?}", other),
             },

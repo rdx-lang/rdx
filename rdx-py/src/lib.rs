@@ -135,6 +135,7 @@ fn collect_by_type<'a>(
     }
 }
 
+#[allow(clippy::match_like_matches_macro)]
 fn node_type_matches(node: &rdx_ast::Node, expected: &str) -> bool {
     match (node, expected) {
         (rdx_ast::Node::Text(_), "text") => true,

@@ -63,7 +63,7 @@ Welcome to version {$version} of the documentation, authored by {$author}.
 ### Primitive Attributes (Numbers, Booleans, Null)
 
 <Pagination activePage={2} isInteractive={true} showArrows={false} ref={null} />
-<Slider min={-3.14} max={2.5e10} step={0.01} />
+<Slider min={-2.75} max={2.5e10} step={0.01} />
 
 ### Boolean Shorthand
 

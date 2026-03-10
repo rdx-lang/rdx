@@ -2,8 +2,8 @@
 
 Parse .rdx documents at Rust speed. Returns plain Python dicts.
 
-    >>> import rdx
-    >>> ast = rdx.parse("# Hello\\n\\n<Notice type=\\"info\\">World</Notice>\\n")
+    >>> import rdx_parser
+    >>> ast = rdx_parser.parse("# Hello\\n\\n<Notice type=\\"info\\">World</Notice>\\n")
     >>> ast["type"]
     'root'
     >>> ast["children"][1]["name"]
