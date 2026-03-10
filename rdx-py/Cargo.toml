@@ -1,0 +1,21 @@
+[package]
+name = "rdx-py"
+description = "Python bindings for the RDX parser via PyO3"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "_rdx"
+crate-type = ["cdylib"]
+
+[dependencies]
+rdx-ast = { path = "../rdx-ast" }
+rdx-parser = { path = "../rdx-parser" }
+rdx-schema = { path = "../rdx-schema" }
+rdx-transform = { path = "../rdx-transform" }
+pyo3 = { version = "0.28", features = ["extension-module"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+pythonize = "0.28"

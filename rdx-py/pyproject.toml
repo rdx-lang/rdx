@@ -1,0 +1,27 @@
+[build-system]
+requires = ["maturin>=1.7,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "rdx"
+version = "0.1.0"
+description = "RDX parser for Python — parse .rdx documents at Rust speed"
+readme = "README.md"
+license = { text = "MIT OR Apache-2.0" }
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: Text Processing :: Markup",
+    "Topic :: Software Development :: Documentation",
+]
+
+[project.urls]
+Repository = "https://github.com/rdx-lang/rdx"
+Documentation = "https://github.com/rdx-lang/rdx/tree/main/rdx-py"
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
+python-source = "python"
+module-name = "rdx._rdx"
