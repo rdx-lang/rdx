@@ -151,7 +151,9 @@ jobs:
     name: Publish npm packages
     needs: [validate-version, publish-crates]
     runs-on: ubuntu-latest
-    environment: npm
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -198,10 +200,8 @@ jobs:
           if npm view @rdx-lang/wasm@$VERSION version 2>/dev/null; then
             echo "@rdx-lang/wasm@$VERSION already published — skipping"
           else
-            npm publish --access public
+            npm publish --access public --provenance
           fi
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       # Build and publish @rdx-lang/node
       - name: Build Node native addon
@@ -220,10 +220,8 @@ jobs:
           if npm view @rdx-lang/node@$VERSION version 2>/dev/null; then
             echo "@rdx-lang/node@$VERSION already published — skipping"
           else
-            npm publish --access public
+            npm publish --access public --provenance
           fi
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   build-wheels:
     name: Build wheels (${{ matrix.os }})
