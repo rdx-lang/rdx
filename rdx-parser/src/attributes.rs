@@ -242,7 +242,10 @@ fn parse_primitive_attr(input: &str, pos: usize) -> Result<(AttributeValue, usiz
             if let Ok(n) = trimmed.parse::<i64>() {
                 AttributeValue::Number(n.into())
             } else if let Ok(f) = trimmed.parse::<f64>() {
-                AttributeValue::Number(serde_json::Number::from_f64(f).unwrap_or_else(|| 0.into()))
+                match serde_json::Number::from_f64(f) {
+                    Some(n) => AttributeValue::Number(n),
+                    None => return Err(format!("Non-finite float value: {}", trimmed)),
+                }
             } else {
                 return Err(format!("Invalid primitive value: {}", trimmed));
             }
@@ -313,7 +316,17 @@ fn parse_json_attr(input: &str, pos: usize) -> Result<(AttributeValue, usize), J
                             serde_json::Value::Array(arr) => {
                                 Ok((AttributeValue::Array(arr), i + 2))
                             }
-                            _ => Ok((AttributeValue::Object(serde_json::Map::new()), i + 2)),
+                            other => {
+                            return Err(JsonAttrError {
+                                message: format!(
+                                    "JSON attribute must be an object or array, got: {}",
+                                    other
+                                ),
+                                raw: input[pos..i + 2].to_string(),
+                                start: pos,
+                                end: i + 2,
+                            });
+                        }
                         };
                     }
                     // Wrap in {} for object shorthand
