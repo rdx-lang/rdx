@@ -1,0 +1,23 @@
+[package]
+name = "rdx-wasm"
+description = "WebAssembly bindings for the RDX parser, schema validator, and transforms"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+rdx-ast = { path = "../rdx-ast" }
+rdx-parser = { path = "../rdx-parser" }
+rdx-schema = { path = "../rdx-schema" }
+rdx-transform = { path = "../rdx-transform" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde-wasm-bindgen = "0.6"
+wasm-bindgen = "0.2"
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3"

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["rdx-ast", "rdx-parser", "rdx-transform", "rdx-github", "rdx-schema"]
+members = ["rdx-ast", "rdx-parser", "rdx-transform", "rdx-github", "rdx-schema", "rdx-wasm"]
 
 [workspace.package]
 version = "0.1.0"
