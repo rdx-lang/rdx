@@ -2,5 +2,7 @@
 target/
 __pycache__/
 *.so
+*.dylib
+*.dSYM/
 *.egg-info/
 dist/
