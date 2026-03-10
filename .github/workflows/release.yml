@@ -182,9 +182,11 @@ jobs:
           done
 
       # Build and publish @rdx-lang/wasm
+      # Requires @rdx-lang/types published to npm first (release rdx-js before rdx)
       - name: Build WASM package
         working-directory: rdx-wasm/npm
         run: |
+          bun install
           wasm-pack build .. --target web --out-dir npm/wasm-pkg
           bun build ./src/index.ts --outdir dist --target browser
           bun x tsc --emitDeclarationOnly
