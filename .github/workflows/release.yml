@@ -151,6 +151,7 @@ jobs:
     name: Publish npm packages
     needs: [validate-version, publish-crates]
     runs-on: ubuntu-latest
+    environment: npm
     permissions:
       contents: read
       id-token: write
