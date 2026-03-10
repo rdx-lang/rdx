@@ -183,6 +183,11 @@ jobs:
             echo "Set $pkg version to $VERSION"
           done
 
+      - name: Copy READMEs into npm packages
+        run: |
+          cp rdx-wasm/README.md rdx-wasm/npm/README.md
+          cp rdx-node/README.md rdx-node/npm/README.md
+
       # Build and publish @rdx-lang/wasm
       # Requires @rdx-lang/types published to npm first (release rdx-js before rdx)
       - name: Build WASM package
