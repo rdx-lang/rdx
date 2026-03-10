@@ -209,7 +209,12 @@ jobs:
           if npm view @rdx-lang/wasm@$VERSION version 2>/dev/null; then
             echo "@rdx-lang/wasm@$VERSION already published — skipping"
           else
-            npm publish --access public --provenance
+            TAG_FLAG=""
+            if [[ "$VERSION" == *-* ]]; then
+              PRERELEASE="${VERSION#*-}"
+              TAG_FLAG="--tag ${PRERELEASE%%.*}"
+            fi
+            npm publish --access public --provenance $TAG_FLAG
           fi
 
       # Build and publish @rdx-lang/node
@@ -229,7 +234,12 @@ jobs:
           if npm view @rdx-lang/node@$VERSION version 2>/dev/null; then
             echo "@rdx-lang/node@$VERSION already published — skipping"
           else
-            npm publish --access public --provenance
+            TAG_FLAG=""
+            if [[ "$VERSION" == *-* ]]; then
+              PRERELEASE="${VERSION#*-}"
+              TAG_FLAG="--tag ${PRERELEASE%%.*}"
+            fi
+            npm publish --access public --provenance $TAG_FLAG
           fi
 
   build-wheels:
