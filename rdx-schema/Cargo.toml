@@ -1,0 +1,15 @@
+[package]
+name = "rdx-schema"
+description = "Schema validation for RDX (Reactive Document eXpressions) component ASTs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+rdx-ast = { path = "../rdx-ast" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+rdx-parser = { path = "../rdx-parser" }
