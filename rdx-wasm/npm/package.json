@@ -1,0 +1,33 @@
+{
+  "name": "@rdx-lang/wasm",
+  "version": "0.1.0",
+  "description": "RDX parser, validator, and transforms — compiled to WebAssembly",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./wasm": "./wasm-pkg/rdx_wasm_bg.wasm"
+  },
+  "files": ["dist", "wasm-pkg"],
+  "scripts": {
+    "build:wasm": "wasm-pack build .. --target web --out-dir npm/wasm-pkg",
+    "build:js": "bun build ./src/index.ts --outdir dist --target browser && bun x tsc --emitDeclarationOnly",
+    "build": "bun run build:wasm && bun run build:js"
+  },
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rdx-lang/rdx",
+    "directory": "rdx-wasm/npm"
+  },
+  "dependencies": {
+    "@rdx-lang/types": "^0.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8"
+  }
+}

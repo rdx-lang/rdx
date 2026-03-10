@@ -1,0 +1,23 @@
+[package]
+name = "rdx-node"
+description = "Native Node.js bindings for the RDX parser via napi-rs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+rdx-ast = { path = "../rdx-ast" }
+rdx-parser = { path = "../rdx-parser" }
+rdx-schema = { path = "../rdx-schema" }
+rdx-transform = { path = "../rdx-transform" }
+napi = { version = "2", default-features = false, features = ["napi9", "serde-json"] }
+napi-derive = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[build-dependencies]
+napi-build = "2"

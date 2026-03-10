@@ -1,0 +1,42 @@
+{
+  "name": "@rdx-lang/node",
+  "version": "0.1.0",
+  "description": "Native Node.js bindings for the RDX parser — Rust speed, no WASM",
+  "type": "module",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js",
+      "require": "./index.cjs"
+    }
+  },
+  "files": ["index.js", "index.cjs", "index.d.ts", "*.node"],
+  "scripts": {
+    "build": "napi build --release --platform",
+    "prepublishOnly": "napi prepublish"
+  },
+  "napi": {
+    "binaryName": "rdx-node",
+    "targets": [
+      "x86_64-apple-darwin",
+      "aarch64-apple-darwin",
+      "x86_64-unknown-linux-gnu",
+      "aarch64-unknown-linux-gnu",
+      "x86_64-pc-windows-msvc"
+    ]
+  },
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rdx-lang/rdx",
+    "directory": "rdx-node"
+  },
+  "dependencies": {
+    "@rdx-lang/types": "^0.1.0"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^3"
+  }
+}
