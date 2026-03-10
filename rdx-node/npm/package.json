@@ -14,8 +14,7 @@
   },
   "files": ["index.js", "index.cjs", "index.d.ts", "*.node"],
   "scripts": {
-    "build": "napi build --release --platform",
-    "prepublishOnly": "napi prepublish"
+    "build": "napi build --release --platform"
   },
   "napi": {
     "binaryName": "rdx-node",
