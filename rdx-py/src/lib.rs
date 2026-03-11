@@ -1,3 +1,8 @@
+//! Python bindings for the RDX parser via PyO3.
+//!
+//! Exposes parsing, schema validation, transforms, and utility functions
+//! to Python. All AST data is returned as native Python dicts and lists.
+
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
 use pythonize::pythonize;
@@ -21,11 +26,16 @@ fn parse_with_defaults<'py>(py: Python<'py>, input: &str) -> PyResult<Bound<'py,
 }
 
 /// Parse with a specific set of transforms.
+///
+/// Supported transform names: ``"auto-slug"``, ``"toc"``, ``"github"``.
+/// Pass ``repo="owner/repo"`` for the github transform.
 #[pyfunction]
+#[pyo3(signature = (input, transforms, repo=None))]
 fn parse_with_transforms<'py>(
     py: Python<'py>,
     input: &str,
     transforms: Vec<String>,
+    repo: Option<String>,
 ) -> PyResult<Bound<'py, PyAny>> {
     let mut pipeline = rdx_transform::Pipeline::new();
     for name in &transforms {
@@ -35,6 +45,14 @@ fn parse_with_transforms<'py>(
             }
             "toc" => {
                 pipeline = pipeline.add(rdx_transform::TableOfContents::default());
+            }
+            "github" => {
+                let gh = if let Some(ref r) = repo {
+                    rdx_github::GithubReferences::new(r)
+                } else {
+                    rdx_github::GithubReferences::default()
+                };
+                pipeline = pipeline.add(gh);
             }
             other => {
                 return Err(pyo3::exceptions::PyValueError::new_err(format!(

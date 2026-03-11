@@ -1,3 +1,9 @@
+//! Native Node.js bindings for the RDX parser via napi-rs.
+//!
+//! Provides high-performance access to the RDX parser, schema validator,
+//! and transform pipeline from Node.js without spawning child processes or
+//! going through WebAssembly.
+
 #[macro_use]
 extern crate napi_derive;
 
@@ -18,8 +24,21 @@ pub fn parse_with_defaults(input: String) -> Result<serde_json::Value> {
 }
 
 /// Parse with a specific set of transforms.
+///
+/// Supported transform names: `"auto-slug"`, `"toc"`, `"github"`.
+/// Pass `{ repo: "owner/repo" }` as options for the github transform.
 #[napi(js_name = "parseWithTransforms")]
-pub fn parse_with_transforms(input: String, transforms: Vec<String>) -> Result<serde_json::Value> {
+pub fn parse_with_transforms(
+    input: String,
+    transforms: Vec<String>,
+    options: Option<serde_json::Value>,
+) -> Result<serde_json::Value> {
+    let repo = options
+        .as_ref()
+        .and_then(|o| o.get("repo"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
     let mut pipeline = rdx_transform::Pipeline::new();
     for name in &transforms {
         match name.as_str() {
@@ -28,6 +47,14 @@ pub fn parse_with_transforms(input: String, transforms: Vec<String>) -> Result<s
             }
             "toc" => {
                 pipeline = pipeline.add(rdx_transform::TableOfContents::default());
+            }
+            "github" => {
+                let gh = if let Some(ref r) = repo {
+                    rdx_github::GithubReferences::new(r)
+                } else {
+                    rdx_github::GithubReferences::default()
+                };
+                pipeline = pipeline.add(gh);
             }
             other => {
                 return Err(Error::from_reason(format!(

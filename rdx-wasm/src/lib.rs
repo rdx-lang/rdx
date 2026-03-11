@@ -1,3 +1,9 @@
+//! WebAssembly bindings for the RDX parser, schema validator, and transforms.
+//!
+//! Exposes the full RDX toolchain to browsers, Deno, and edge runtimes via
+//! `wasm-bindgen`. All functions accept and return plain JS objects — no custom
+//! wrapper types needed.
+
 use wasm_bindgen::prelude::*;
 
 /// Parse an RDX document and return the AST as a JS object.
@@ -23,10 +29,25 @@ pub fn parse_with_defaults(input: &str) -> Result<JsValue, JsError> {
 /// `transforms` is an array of transform names. Supported values:
 /// - `"auto-slug"` — generate heading IDs
 /// - `"toc"` — generate table of contents
+/// - `"github"` — convert `#123`, `@user`, commit SHAs to links
+///   (reads `github: owner/repo` from frontmatter, or pass `repo` in options)
+///
+/// `options` is an optional object with configuration:
+/// - `repo` — GitHub repository (e.g. `"owner/repo"`) for the `"github"` transform
 #[wasm_bindgen(js_name = "parseWithTransforms")]
-pub fn parse_with_transforms(input: &str, transforms: &JsValue) -> Result<JsValue, JsError> {
+pub fn parse_with_transforms(
+    input: &str,
+    transforms: &JsValue,
+    options: Option<JsValue>,
+) -> Result<JsValue, JsError> {
     let names: Vec<String> = serde_wasm_bindgen::from_value(transforms.clone())
         .map_err(|e| JsError::new(&e.to_string()))?;
+
+    let opts: Option<TransformOptions> = if let Some(ref o) = options {
+        serde_wasm_bindgen::from_value(o.clone()).ok()
+    } else {
+        None
+    };
 
     let mut pipeline = rdx_transform::Pipeline::new();
     for name in &names {
@@ -37,6 +58,14 @@ pub fn parse_with_transforms(input: &str, transforms: &JsValue) -> Result<JsValu
             "toc" => {
                 pipeline = pipeline.add(rdx_transform::TableOfContents::default());
             }
+            "github" => {
+                let gh = if let Some(ref repo) = opts.as_ref().and_then(|o| o.repo.clone()) {
+                    rdx_github::GithubReferences::new(repo)
+                } else {
+                    rdx_github::GithubReferences::default()
+                };
+                pipeline = pipeline.add(gh);
+            }
             other => {
                 return Err(JsError::new(&format!("unknown transform: \"{other}\"")));
             }
@@ -45,6 +74,11 @@ pub fn parse_with_transforms(input: &str, transforms: &JsValue) -> Result<JsValu
 
     let root = pipeline.run(input);
     serde_wasm_bindgen::to_value(&root).map_err(|e| JsError::new(&e.to_string()))
+}
+
+#[derive(serde::Deserialize)]
+struct TransformOptions {
+    repo: Option<String>,
 }
 
 /// Validate an RDX AST against a component schema.
