@@ -49,7 +49,13 @@ Handles common MDX patterns:
 
 ### `rdx fmt`
 
-Format an `.rdx` file (not yet implemented).
+Format an `.rdx` file.
+
+```sh
+rdx fmt document.rdx              # output to stdout
+rdx fmt document.rdx --write      # overwrite the file
+rdx fmt document.rdx --check      # exit 1 if not formatted
+```
 
 ## License
 

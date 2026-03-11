@@ -1,4 +1,5 @@
 mod convert;
+mod fmt;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
@@ -51,10 +52,18 @@ enum Commands {
         in_place: bool,
     },
 
-    /// Format an .rdx file (placeholder)
+    /// Format an .rdx file
     Fmt {
         /// Path to the .rdx file
         file: PathBuf,
+
+        /// Write formatted output back to the file
+        #[arg(long)]
+        write: bool,
+
+        /// Check if the file is already formatted (exit 1 if not)
+        #[arg(long)]
+        check: bool,
     },
 }
 
@@ -75,9 +84,8 @@ fn main() -> Result<()> {
         } => {
             cmd_convert(&file, output, in_place)?;
         }
-        Commands::Fmt { file: _ } => {
-            println!("not yet implemented");
-            std::process::exit(0);
+        Commands::Fmt { file, write, check } => {
+            cmd_fmt(&file, write, check)?;
         }
     }
 
@@ -172,5 +180,31 @@ fn cmd_convert(file: &PathBuf, output: Option<PathBuf>, in_place: bool) -> Resul
         .with_context(|| format!("Failed to write to file: {:?}", output_path))?;
 
     eprintln!("Converted to: {:?}", output_path);
+    Ok(())
+}
+
+/// Format an .rdx file
+fn cmd_fmt(file: &PathBuf, write: bool, check: bool) -> Result<()> {
+    let content =
+        fs::read_to_string(file).with_context(|| format!("Failed to read file: {:?}", file))?;
+
+    let root = parse_rdx(&content);
+    let formatted = fmt::format_root(&root);
+
+    if check {
+        if content != formatted {
+            eprintln!("{:?} is not formatted", file);
+            std::process::exit(1);
+        }
+        return Ok(());
+    }
+
+    if write {
+        fs::write(file, &formatted).with_context(|| format!("Failed to write file: {:?}", file))?;
+        eprintln!("Formatted: {:?}", file);
+    } else {
+        print!("{}", formatted);
+    }
+
     Ok(())
 }
