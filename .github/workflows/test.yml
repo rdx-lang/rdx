@@ -65,4 +65,4 @@ jobs:
 
       # Test pure Rust crates only (skip native binding crates that need extra tooling)
       - name: Run tests
-        run: cargo test -p rdx-ast -p rdx-parser -p rdx-transform -p rdx-github -p rdx-schema
+        run: cargo test -p rdx-ast -p rdx-parser -p rdx-transform -p rdx-github -p rdx-schema -p rdx-cli
