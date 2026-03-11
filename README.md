@@ -7,23 +7,33 @@ RDX documents are pure data. No `import`, no code execution, no JavaScript runti
 ## Install
 
 **Rust**
+
 ```sh
 cargo add rdx-parser
 ```
 
 **Node.js** (native)
+
 ```sh
 npm install @rdx-lang/node
 ```
 
 **Python**
+
 ```sh
 pip install rdx-parser
 ```
 
 **Browser / Deno / Edge**
+
 ```sh
 npm install @rdx-lang/wasm
+```
+
+**CLI**
+
+```sh
+cargo install rdx-cli
 ```
 
 ## Usage
@@ -43,22 +53,25 @@ print(ast["children"][0]["type"])  # heading
 
 ```typescript
 import { parse } from "@rdx-lang/node";
-const ast = parse("# Hello\n\n<Notice type=\"warning\">\n  Be careful.\n</Notice>\n");
+const ast = parse(
+  '# Hello\n\n<Notice type="warning">\n  Be careful.\n</Notice>\n',
+);
 console.log(ast.children[0].type); // heading
 ```
 
 ## Crates
 
-| Crate | Description |
-|---|---|
-| [`rdx-ast`](rdx-ast/) | AST type definitions with serde serialization |
-| [`rdx-parser`](rdx-parser/) | Parses `.rdx` documents into a spec-compliant AST |
-| [`rdx-schema`](rdx-schema/) | Schema validation for components — required props, types, enum values |
-| [`rdx-transform`](rdx-transform/) | Composable AST transform pipeline (auto-slug, table of contents) |
-| [`rdx-github`](rdx-github/) | Optional transform — converts `#123`, `@user`, and commit SHAs to links |
-| [`rdx-wasm`](rdx-wasm/) | WebAssembly bindings for browsers, Deno, and edge runtimes |
-| [`rdx-node`](rdx-node/) | Native Node.js bindings via napi-rs |
-| [`rdx-py`](rdx-py/) | Python bindings via PyO3 — `pip install rdx-parser` |
+| Crate                             | Description                                                             |
+| --------------------------------- | ----------------------------------------------------------------------- |
+| [`rdx-ast`](rdx-ast/)             | AST type definitions with serde serialization                           |
+| [`rdx-parser`](rdx-parser/)       | Parses `.rdx` documents into a spec-compliant AST                       |
+| [`rdx-schema`](rdx-schema/)       | Schema validation for components — required props, types, enum values   |
+| [`rdx-transform`](rdx-transform/) | Composable AST transform pipeline (auto-slug, table of contents)        |
+| [`rdx-github`](rdx-github/)       | Optional transform — converts `#123`, `@user`, and commit SHAs to links |
+| [`rdx-wasm`](rdx-wasm/)           | WebAssembly bindings for browsers, Deno, and edge runtimes              |
+| [`rdx-node`](rdx-node/)           | Native Node.js bindings via napi-rs                                     |
+| [`rdx-py`](rdx-py/)               | Python bindings via PyO3 — `pip install rdx-parser`                     |
+| [`rdx-cli`](rdx-cli/)             | CLI — parse, validate, convert MDX→RDX, format                          |
 
 ## What RDX parses
 
@@ -103,6 +116,16 @@ let root = Pipeline::new()
     .run("## Setup\n\n## Usage\n");
 ```
 
+## CLI
+
+```sh
+rdx parse document.rdx --pretty        # Output AST as JSON
+rdx validate document.rdx --schema s.json  # Validate against schema
+rdx convert page.mdx --in-place        # Convert MDX → RDX
+```
+
+Prebuilt binaries available on [GitHub Releases](https://github.com/rdx-lang/rdx/releases).
+
 ## Building
 
 ```sh
@@ -114,11 +137,11 @@ Requires Rust 2024 edition (1.85+).
 
 ## Ecosystem
 
-| Repo | Description |
-|---|---|
-| [`rdx`](https://github.com/rdx-lang/rdx) | Parser, schema, transforms, and language bindings (this repo) |
-| [`rdx-js`](https://github.com/rdx-lang/rdx-js) | TypeScript types, JS transform pipeline, and JS-native extensions |
-| [`tree-sitter-rdx`](https://github.com/rdx-lang/tree-sitter-rdx) | Syntax highlighting for Neovim, Helix, Zed |
+| Repo                                                             | Description                                                       |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------- |
+| [`rdx`](https://github.com/rdx-lang/rdx)                         | Parser, schema, transforms, and language bindings (this repo)     |
+| [`rdx-js`](https://github.com/rdx-lang/rdx-js)                   | TypeScript types, JS transform pipeline, and JS-native extensions |
+| [`tree-sitter-rdx`](https://github.com/rdx-lang/tree-sitter-rdx) | Syntax highlighting for Neovim, Helix, Zed                        |
 
 ## Specification
 

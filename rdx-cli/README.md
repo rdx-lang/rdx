@@ -40,6 +40,7 @@ rdx convert page.mdx --in-place         # writes page.rdx
 ```
 
 Handles common MDX patterns:
+
 - Removes `import`/`export` statements
 - Converts JSX comments `{/* ... */}` to HTML comments `<!-- ... -->`
 - Strips JS expression attributes (with warnings)
