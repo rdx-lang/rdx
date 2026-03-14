@@ -82,11 +82,17 @@ fn parse_body(body: &str, base_offset: usize, sm: &SourceMap, full_input: &str) 
                     ""
                 };
                 let children = parse_body(inner, body_start, sm, full_input);
+                let raw_content = if body_start <= body_end {
+                    full_input[body_start..body_end].to_string()
+                } else {
+                    String::new()
+                };
                 nodes.push(Node::Component(ComponentNode {
                     name: tag.name,
                     is_inline: false,
                     attributes: tag.attributes,
                     children,
+                    raw_content,
                     position: sm.position(tag.start, close_end),
                 }));
             }
@@ -96,6 +102,7 @@ fn parse_body(body: &str, base_offset: usize, sm: &SourceMap, full_input: &str) 
                     is_inline: false,
                     attributes: tag.attributes,
                     children: vec![],
+                    raw_content: String::new(),
                     position: sm.position(tag.start, tag.end),
                 }));
             }

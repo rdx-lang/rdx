@@ -305,6 +305,7 @@ pub(crate) fn parse_markdown_region(
 
                 // Try to parse all RDX components from this HTML event.
                 // A single HTML block event may contain multiple component lines.
+                let comp_stack_len = comp_stack.len();
                 let nodes = parse_html_for_components(
                     &html_str,
                     is_inline_html,
@@ -319,6 +320,10 @@ pub(crate) fn parse_markdown_region(
                     }
                     continue;
                 }
+                // Open tag was pushed to comp_stack (no nodes emitted yet)
+                if comp_stack.len() > comp_stack_len {
+                    continue;
+                }
 
                 // Check if component close tag
                 let trimmed = html_str.trim();
@@ -328,6 +333,7 @@ pub(crate) fn parse_markdown_region(
                     abs_start,
                     abs_end,
                     sm,
+                    full_input,
                     &mut stack,
                     &mut result,
                     &mut comp_stack,
@@ -464,6 +470,7 @@ fn parse_html_for_components(
                             is_inline,
                             attributes: parsed_tag.attributes,
                             children: vec![],
+                            raw_content: String::new(),
                             position: sm.position(tag_start_abs, abs_start + line_end),
                         }));
                         pos = line_end;
@@ -485,6 +492,7 @@ fn parse_html_for_components(
                                 is_inline,
                                 attributes: parsed_tag.attributes,
                                 children,
+                                raw_content: body_text.to_string(),
                                 position: sm.position(tag_start_abs, abs_start + close_end),
                             }));
                             pos = close_end;
@@ -542,6 +550,7 @@ fn try_handle_close_tag(
     abs_start: usize,
     abs_end: usize,
     sm: &SourceMap,
+    full_input: &str,
     stack: &mut Vec<Frame>,
     result: &mut Vec<Node>,
     comp_stack: &mut Vec<(tags::ParsedTag, Vec<Node>)>,
@@ -557,11 +566,18 @@ fn try_handle_close_tag(
     if let Some((name, _)) = tags::try_parse_close_tag(trimmed, 0) {
         if let Some((open_tag, children)) = comp_stack.pop() {
             if open_tag.name == name {
+                // Extract raw body text from source between open tag end and close tag start
+                let raw_content = if open_tag.end <= abs_start {
+                    full_input[open_tag.end..abs_start].to_string()
+                } else {
+                    String::new()
+                };
                 let node = Node::Component(ComponentNode {
                     name: open_tag.name,
                     is_inline: false,
                     attributes: open_tag.attributes,
                     children,
+                    raw_content,
                     position: sm.position(open_tag.start, abs_end),
                 });
                 push_node(stack, result, comp_stack, node);

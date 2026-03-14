@@ -140,6 +140,7 @@ fn build_toc_list(entries: &[TocEntry]) -> Node {
             children: items,
             position: pos.clone(),
         })],
+        raw_content: String::new(),
         position: pos,
     })
 }
