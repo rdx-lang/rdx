@@ -36,7 +36,7 @@ jobs:
 
           CARGO_VERSION=$(cargo metadata --no-deps --format-version=1 \
             | jq -r '.packages[] | select(.name == "rdx-ast") | .version')
-          CARGO_BASE=$(echo "$CARGO_VERSION" | grep -oP '^\d+\.\d+\.\d+')
+          CARGO_BASE=$(echo "$CARGO_VERSION" | sed 's/\([0-9]*\.[0-9]*\.[0-9]*\).*/\1/')
 
           echo "Tag version: $TAG_VERSION"
           echo "Cargo.toml version: $CARGO_VERSION"
@@ -265,7 +265,7 @@ jobs:
           sed -i.bak "s/version = \"$CURRENT\"/version = \"$VERSION\"/g" Cargo.toml
           # For pre-release versions, also update relaxed constraints (e.g. "0.1" -> "0.1.1-beta.1")
           if [[ "$VERSION" == *-* ]]; then
-            BASE=$(echo "$CURRENT" | grep -oP '^\d+\.\d+')
+            BASE=$(echo "$CURRENT" | sed 's/\([0-9]*\.[0-9]*\).*/\1/')
             sed -i.bak "s/version = \"$BASE\"/version = \"=$VERSION\"/g" Cargo.toml
           fi
           echo "Set versions to $VERSION"
@@ -300,7 +300,7 @@ jobs:
           sed -i "s/version = \"$CURRENT\"/version = \"$VERSION\"/g" Cargo.toml
           # For pre-release versions, also update relaxed constraints (e.g. "0.1" -> "=0.1.1-beta.1")
           if [[ "$VERSION" == *-* ]]; then
-            BASE=$(echo "$CURRENT" | grep -oP '^\d+\.\d+')
+            BASE=$(echo "$CURRENT" | sed 's/\([0-9]*\.[0-9]*\).*/\1/')
             sed -i "s/version = \"$BASE\"/version = \"=$VERSION\"/g" Cargo.toml
           fi
           echo "Set versions to $VERSION"
