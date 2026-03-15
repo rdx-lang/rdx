@@ -260,9 +260,14 @@ jobs:
           CURRENT=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
           # Update pyproject.toml
           sed -i.bak "s/^version = \".*\"/version = \"$VERSION\"/" rdx-py/pyproject.toml
-          # Update workspace Cargo.toml version + dependencies
-          sed -i.bak "0,/^version = \".*\"/s//version = \"$VERSION\"/" Cargo.toml
+          # Update workspace Cargo.toml: version field first, then dependency versions
+          # Must update dependencies before the version field to avoid matching the already-changed version
           sed -i.bak "s/version = \"$CURRENT\"/version = \"$VERSION\"/g" Cargo.toml
+          # For pre-release versions, also update relaxed constraints (e.g. "0.1" -> "0.1.1-beta.1")
+          if [[ "$VERSION" == *-* ]]; then
+            BASE=$(echo "$CURRENT" | grep -oP '^\d+\.\d+')
+            sed -i.bak "s/version = \"$BASE\"/version = \"=$VERSION\"/g" Cargo.toml
+          fi
           echo "Set versions to $VERSION"
 
       - name: Build wheels
@@ -291,9 +296,13 @@ jobs:
           CURRENT=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
           # Update pyproject.toml
           sed -i "s/^version = \".*\"/version = \"$VERSION\"/" rdx-py/pyproject.toml
-          # Update workspace Cargo.toml version + dependencies
-          sed -i "0,/^version = \".*\"/s//version = \"$VERSION\"/" Cargo.toml
+          # Update workspace Cargo.toml: dependency versions first, then version field
           sed -i "s/version = \"$CURRENT\"/version = \"$VERSION\"/g" Cargo.toml
+          # For pre-release versions, also update relaxed constraints (e.g. "0.1" -> "=0.1.1-beta.1")
+          if [[ "$VERSION" == *-* ]]; then
+            BASE=$(echo "$CURRENT" | grep -oP '^\d+\.\d+')
+            sed -i "s/version = \"$BASE\"/version = \"=$VERSION\"/g" Cargo.toml
+          fi
           echo "Set versions to $VERSION"
 
       - name: Build sdist
