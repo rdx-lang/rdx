@@ -1,16 +1,26 @@
 [workspace]
 resolver = "2"
-members = ["rdx-ast", "rdx-parser", "rdx-transform", "rdx-github", "rdx-schema", "rdx-wasm", "rdx-node", "rdx-py", "rdx-cli"]
+members = [
+  "rdx-ast",
+  "rdx-parser",
+  "rdx-transform",
+  "rdx-github",
+  "rdx-schema",
+  "rdx-wasm",
+  "rdx-node",
+  "rdx-py",
+  "rdx-cli",
+]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rdx-lang/rdx"
 
 [workspace.dependencies]
-rdx-ast = { version = "0.1.0", path = "rdx-ast" }
-rdx-parser = { version = "0.1.0", path = "rdx-parser" }
-rdx-transform = { version = "0.1.0", path = "rdx-transform" }
-rdx-github = { version = "0.1.0", path = "rdx-github" }
-rdx-schema = { version = "0.1.0", path = "rdx-schema" }
+rdx-ast = { version = "0.1", path = "rdx-ast" }
+rdx-parser = { version = "0.1", path = "rdx-parser" }
+rdx-transform = { version = "0.1", path = "rdx-transform" }
+rdx-github = { version = "0.1", path = "rdx-github" }
+rdx-schema = { version = "0.1", path = "rdx-schema" }
