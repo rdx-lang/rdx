@@ -150,7 +150,21 @@ fn validate_component(
         let attr_line = attr.position.start.line;
         let attr_col = attr.position.start.column;
 
-        let Some(prop_schema) = comp_schema.props.get(&attr.name) else {
+        // Look up the prop schema: component-specific props take precedence over
+        // global props. If a component defines a prop with the same name as a
+        // global prop, the component's definition wins.
+        let prop_schema = comp_schema
+            .props
+            .get(&attr.name)
+            .or_else(|| {
+                schema
+                    .global_props
+                    .iter()
+                    .find(|(n, _)| n == &attr.name)
+                    .map(|(_, s)| s)
+            });
+
+        let Some(prop_schema) = prop_schema else {
             // Unknown prop
             diagnostics.push(Diagnostic {
                 severity: Severity::Warning,

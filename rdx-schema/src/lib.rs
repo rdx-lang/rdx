@@ -6,6 +6,9 @@ use serde::{Deserialize, Serialize};
 mod validate;
 pub use validate::{Diagnostic, Severity, validate};
 
+pub mod builtins;
+pub use builtins::standard_schema;
+
 /// A schema registry mapping component names to their definitions.
 ///
 /// # Example
@@ -31,6 +34,9 @@ pub struct Schema {
     /// When false (default), unknown components are silently accepted.
     #[serde(default)]
     pub strict: bool,
+    /// Props that are valid on every component regardless of its own schema.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub global_props: Vec<(String, PropSchema)>,
 }
 
 impl Schema {
@@ -47,6 +53,12 @@ impl Schema {
     /// Enable strict mode: unknown components produce errors.
     pub fn strict(mut self, strict: bool) -> Self {
         self.strict = strict;
+        self
+    }
+
+    /// Register a global prop that is valid on any component. Builder pattern.
+    pub fn global_prop(mut self, name: &str, schema: PropSchema) -> Self {
+        self.global_props.push((name.to_string(), schema));
         self
     }
 }
@@ -95,6 +107,38 @@ impl ComponentSchema {
     /// Set a description.
     pub fn description(mut self, desc: &str) -> Self {
         self.description = Some(desc.to_string());
+        self
+    }
+
+    /// Inherit all props from `base` that are not already defined on `self`.
+    ///
+    /// This implements a "mixin" pattern: `self` keeps its own props unchanged,
+    /// and any prop from `base` that does not already exist in `self` is copied
+    /// over. When both `self` and `base` define a prop with the same name,
+    /// `self`'s definition wins (component-specific takes priority over the
+    /// base).
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use rdx_schema::{ComponentSchema, PropSchema, PropType};
+    ///
+    /// let base = ComponentSchema::new()
+    ///     .prop("id", PropSchema::optional(PropType::String))
+    ///     .prop("class", PropSchema::optional(PropType::String));
+    ///
+    /// let derived = ComponentSchema::new()
+    ///     .prop("id", PropSchema::required(PropType::String)) // overrides base
+    ///     .extends(&base);
+    ///
+    /// // "id" comes from derived (required), "class" comes from base (optional).
+    /// assert!(derived.props["id"].required);
+    /// assert!(!derived.props["class"].required);
+    /// ```
+    pub fn extends(mut self, base: &ComponentSchema) -> Self {
+        for (name, prop) in &base.props {
+            self.props.entry(name.clone()).or_insert_with(|| prop.clone());
+        }
         self
     }
 }
