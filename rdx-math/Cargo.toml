@@ -1,0 +1,10 @@
+[package]
+name = "rdx-math"
+description = "LaTeX math parser for the RDX specification"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+rdx-ast.workspace = true
