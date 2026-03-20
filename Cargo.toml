@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
   "rdx-ast",
+  "rdx-math",
   "rdx-parser",
   "rdx-transform",
   "rdx-github",
@@ -20,6 +21,7 @@ repository = "https://github.com/rdx-lang/rdx"
 
 [workspace.dependencies]
 rdx-ast = { version = "0.1", path = "rdx-ast" }
+rdx-math = { version = "0.1", path = "rdx-math" }
 rdx-parser = { version = "0.1", path = "rdx-parser" }
 rdx-transform = { version = "0.1", path = "rdx-transform" }
 rdx-github = { version = "0.1", path = "rdx-github" }

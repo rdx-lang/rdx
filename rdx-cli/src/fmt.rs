@@ -281,16 +281,59 @@ fn format_node(out: &mut String, node: &Node, depth: usize) {
         }
         Node::MathInline(t) => {
             out.push('$');
-            out.push_str(&t.value);
+            out.push_str(&t.raw);
             out.push('$');
         }
         Node::MathDisplay(t) => {
-            out.push_str("$$\n");
-            out.push_str(&t.value);
-            if !t.value.ends_with('\n') {
+            if let Some(ref label) = t.label {
+                out.push_str(&format!("$$ {{#{label}}}\n"));
+            } else {
+                out.push_str("$$\n");
+            }
+            out.push_str(&t.raw);
+            if !t.raw.ends_with('\n') {
                 out.push('\n');
             }
             out.push_str("$$\n");
+        }
+        Node::Citation(c) => {
+            out.push('[');
+            for (i, key) in c.keys.iter().enumerate() {
+                if i > 0 {
+                    out.push_str("; ");
+                }
+                if let Some(ref prefix) = key.prefix {
+                    out.push_str(prefix);
+                }
+                out.push('@');
+                out.push_str(&key.id);
+                if let Some(ref locator) = key.locator {
+                    out.push_str(", ");
+                    out.push_str(locator);
+                }
+            }
+            out.push(']');
+        }
+        Node::CrossRef(r) => {
+            out.push_str(&format!("{{@{}}}", r.target));
+        }
+        Node::DefinitionList(dl) => {
+            for child in &dl.children {
+                format_node(out, child, depth);
+            }
+        }
+        Node::DefinitionTerm(dt) => {
+            for child in &dt.children {
+                format_node(out, child, depth);
+            }
+            out.push('\n');
+        }
+        Node::DefinitionDescription(dd) => {
+            out.push_str(": ");
+            for child in &dd.children {
+                format_node(out, child, depth);
+            }
+            out.push('\n');
         }
         Node::Component(c) => {
             format_component(out, c, depth);

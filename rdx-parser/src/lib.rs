@@ -110,14 +110,18 @@ fn parse_body(body: &str, base_offset: usize, sm: &SourceMap, full_input: &str) 
                 value_start,
                 value_end,
                 block_end,
+                label,
             } => {
-                let value = if value_start <= value_end {
+                let raw = if value_start <= value_end {
                     full_input[value_start..value_end].to_string()
                 } else {
                     String::new()
                 };
-                nodes.push(Node::MathDisplay(TextNode {
-                    value,
+                let tree = rdx_math::parse(&raw);
+                nodes.push(Node::MathDisplay(MathDisplayNode {
+                    raw,
+                    tree,
+                    label,
                     position: sm.position(value_start.saturating_sub(3), block_end), // include $$
                 }));
             }
@@ -484,7 +488,7 @@ mod tests {
                 let has_math = p
                     .children
                     .iter()
-                    .any(|n| matches!(n, Node::MathInline(t) if t.value == "x^2 + y^2 = z^2"));
+                    .any(|n| matches!(n, Node::MathInline(t) if t.raw == "x^2 + y^2 = z^2"));
                 assert!(has_math, "Should contain inline math: {:?}", p.children);
             }
             other => panic!("Expected paragraph, got {:?}", other),
@@ -497,7 +501,7 @@ mod tests {
         let has_math = root
             .children
             .iter()
-            .any(|n| matches!(n, Node::MathDisplay(t) if t.value.contains("E = mc^2")));
+            .any(|n| matches!(n, Node::MathDisplay(t) if t.raw.contains("E = mc^2")));
         assert!(has_math, "Should contain display math: {:?}", root.children);
     }
 
@@ -551,6 +555,180 @@ mod tests {
                 );
             }
             other => panic!("Expected code block, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn display_math_block_with_label() {
+        let root = parse("$$ {#eq:euler}\nE = mc^2\n$$\n");
+        let math = root.children.iter().find_map(|n| {
+            if let Node::MathDisplay(m) = n {
+                Some(m)
+            } else {
+                None
+            }
+        });
+        assert!(
+            math.is_some(),
+            "Should have display math: {:?}",
+            root.children
+        );
+        let m = math.unwrap();
+        assert!(
+            m.raw.contains("E = mc^2"),
+            "Math raw should contain content"
+        );
+        assert_eq!(m.label.as_deref(), Some("eq:euler"), "Should have label");
+    }
+
+    #[test]
+    fn display_math_block_without_label() {
+        let root = parse("$$\nE = mc^2\n$$\n");
+        let math = root.children.iter().find_map(|n| {
+            if let Node::MathDisplay(m) = n {
+                Some(m)
+            } else {
+                None
+            }
+        });
+        assert!(
+            math.is_some(),
+            "Should have display math: {:?}",
+            root.children
+        );
+        let m = math.unwrap();
+        assert!(m.label.is_none(), "Should have no label");
+    }
+
+    #[test]
+    fn code_block_meta_title() {
+        let root = parse("```rust title=\"main.rs\"\nfn main() {}\n```\n");
+        match &root.children[0] {
+            Node::CodeBlock(cb) => {
+                assert_eq!(cb.lang.as_deref(), Some("rust"));
+                assert_eq!(cb.title.as_deref(), Some("main.rs"));
+            }
+            other => panic!("Expected code block, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn code_block_meta_highlight_lines() {
+        let root = parse("```rust {3-5,12}\ncode\n```\n");
+        match &root.children[0] {
+            Node::CodeBlock(cb) => {
+                assert_eq!(cb.lang.as_deref(), Some("rust"));
+                let hl = cb.highlight.as_ref().expect("Should have highlight");
+                assert_eq!(hl, &[3, 4, 5, 12]);
+            }
+            other => panic!("Expected code block, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn code_block_meta_show_line_numbers() {
+        let root = parse("```rust showLineNumbers\ncode\n```\n");
+        match &root.children[0] {
+            Node::CodeBlock(cb) => {
+                assert_eq!(cb.show_line_numbers, Some(true));
+            }
+            other => panic!("Expected code block, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn code_block_meta_diff_flag() {
+        let root = parse("```rust diff\ncode\n```\n");
+        match &root.children[0] {
+            Node::CodeBlock(cb) => {
+                assert_eq!(cb.diff, Some(true));
+            }
+            other => panic!("Expected code block, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn code_block_meta_caption() {
+        let root = parse("```rust caption=\"Listing 1\"\ncode\n```\n");
+        match &root.children[0] {
+            Node::CodeBlock(cb) => {
+                assert_eq!(cb.caption.as_deref(), Some("Listing 1"));
+            }
+            other => panic!("Expected code block, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn inline_code_with_lang_hint() {
+        let root = parse("Use `SELECT *`{sql} here.\n");
+        match &root.children[0] {
+            Node::Paragraph(p) => {
+                let code = p.children.iter().find_map(|n| {
+                    if let Node::CodeInline(c) = n {
+                        Some(c)
+                    } else {
+                        None
+                    }
+                });
+                assert!(code.is_some(), "Should have inline code: {:?}", p.children);
+                let c = code.unwrap();
+                assert_eq!(c.value, "SELECT *");
+                assert_eq!(c.lang.as_deref(), Some("sql"));
+            }
+            other => panic!("Expected paragraph, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn definition_list_basic() {
+        let root = parse("Term\n: Definition text\n");
+        let dl = root.children.iter().find_map(|n| {
+            if let Node::DefinitionList(d) = n {
+                Some(d)
+            } else {
+                None
+            }
+        });
+        assert!(
+            dl.is_some(),
+            "Should have definition list: {:?}",
+            root.children
+        );
+        let dl = dl.unwrap();
+        let has_term = dl
+            .children
+            .iter()
+            .any(|n| matches!(n, Node::DefinitionTerm(_)));
+        let has_desc = dl
+            .children
+            .iter()
+            .any(|n| matches!(n, Node::DefinitionDescription(_)));
+        assert!(has_term, "Should have definition term: {:?}", dl.children);
+        assert!(
+            has_desc,
+            "Should have definition description: {:?}",
+            dl.children
+        );
+    }
+
+    #[test]
+    fn inline_code_without_lang_hint() {
+        let root = parse("Use `SELECT *` here.\n");
+        match &root.children[0] {
+            Node::Paragraph(p) => {
+                let code = p.children.iter().find_map(|n| {
+                    if let Node::CodeInline(c) = n {
+                        Some(c)
+                    } else {
+                        None
+                    }
+                });
+                assert!(code.is_some(), "Should have inline code: {:?}", p.children);
+                let c = code.unwrap();
+                assert_eq!(c.value, "SELECT *");
+                assert!(c.lang.is_none());
+            }
+            other => panic!("Expected paragraph, got {:?}", other),
         }
     }
 }

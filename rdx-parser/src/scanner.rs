@@ -21,6 +21,8 @@ pub(crate) enum Segment {
         value_start: usize,
         value_end: usize,
         block_end: usize,
+        /// Optional label from `{#identifier}` on the opening `$$` line.
+        label: Option<String>,
     },
     Error {
         message: String,
@@ -99,9 +101,10 @@ pub(crate) fn scan_segments(body: &str, base_offset: usize, sm: &SourceMap) -> V
             && bytes[content_pos + 1] == b'$'
             && in_code_fence.is_none()
         {
-            // Check rest of line is whitespace (opening $$)
+            // After $$, may have optional {#label} before end of line
             let after_dollars = content_pos + 2;
-            if is_whitespace_until_eol(body, after_dollars) {
+            let (label, line_rest_start) = extract_math_label(body, after_dollars);
+            if is_whitespace_until_eol(body, line_rest_start) {
                 // Find closing $$
                 let search_start = skip_to_next_line(body, after_dollars);
                 if let Some((close_line_start, close_end)) = find_math_close(body, search_start) {
@@ -111,6 +114,7 @@ pub(crate) fn scan_segments(body: &str, base_offset: usize, sm: &SourceMap) -> V
                         value_start: base_offset + value_start,
                         value_end: base_offset + close_line_start,
                         block_end: base_offset + close_end,
+                        label,
                     });
                     pos = skip_to_next_line(body, close_end);
                     md_start = pos;
@@ -307,6 +311,44 @@ fn flush_markdown(segments: &mut Vec<Segment>, md_start: usize, md_end: usize, b
             end: base_offset + md_end,
         });
     }
+}
+
+/// Extract a `{#identifier}` label from position `pos` in `input`.
+///
+/// Returns `(Some(label), pos_after_label)` if found, or `(None, pos)` if not.
+/// Identifier must match `[a-zA-Z_][a-zA-Z0-9_:.-]*`.
+fn extract_math_label(input: &str, pos: usize) -> (Option<String>, usize) {
+    let bytes = input.as_bytes();
+    // Skip whitespace before {#
+    let mut i = pos;
+    while i < input.len() && (bytes[i] == b' ' || bytes[i] == b'\t') {
+        i += 1;
+    }
+    if i + 1 >= input.len() || bytes[i] != b'{' || bytes[i + 1] != b'#' {
+        return (None, pos);
+    }
+    let id_start = i + 2;
+    let mut j = id_start;
+    // First char: [a-zA-Z_]
+    if j >= input.len() || (!bytes[j].is_ascii_alphabetic() && bytes[j] != b'_') {
+        return (None, pos);
+    }
+    j += 1;
+    // Rest: [a-zA-Z0-9_:.-]*
+    while j < input.len()
+        && (bytes[j].is_ascii_alphanumeric()
+            || bytes[j] == b'_'
+            || bytes[j] == b':'
+            || bytes[j] == b'.'
+            || bytes[j] == b'-')
+    {
+        j += 1;
+    }
+    if j >= input.len() || bytes[j] != b'}' {
+        return (None, pos);
+    }
+    let label = input[id_start..j].to_string();
+    (Some(label), j + 1)
 }
 
 /// Find a closing `$$` on its own line. Returns (line_start, end_of_dollars).
