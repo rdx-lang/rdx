@@ -110,10 +110,10 @@ fn transform_nodes(nodes: &mut Vec<Node>, cfg: &ResolvedConfig) {
             continue;
         }
 
-        let old = nodes.remove(i);
-        let text_node = match old {
-            Node::Text(t) => t,
-            _ => unreachable!(),
+        let Node::Text(text_node) = nodes.remove(i) else {
+            debug_assert!(false, "already verified Text node above");
+            i += 1;
+            continue;
         };
         let expanded = expand_text(text_node, cfg);
         let count = expanded.len();
