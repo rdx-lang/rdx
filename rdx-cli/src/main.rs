@@ -1,5 +1,12 @@
+// CLI-only modules — not part of any public API.
+mod ast_util;
+mod check;
 mod convert;
 mod fmt;
+mod refs;
+mod stats;
+#[cfg(test)]
+mod test_helpers;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
@@ -65,6 +72,36 @@ enum Commands {
         #[arg(long)]
         check: bool,
     },
+
+    /// Run full document validation (cross-refs, citations, links, images, headings)
+    Check {
+        /// Path to the .rdx file
+        file: PathBuf,
+
+        /// Path to a schema.json file for component validation
+        #[arg(long)]
+        schema: Option<PathBuf>,
+
+        /// Check that relative links and internal anchors resolve
+        #[arg(long)]
+        links: bool,
+
+        /// Check that referenced image files exist and have alt text
+        #[arg(long)]
+        images: bool,
+    },
+
+    /// List all labels, cross-references, and citations in a document
+    Refs {
+        /// Path to the .rdx file
+        file: PathBuf,
+    },
+
+    /// Print document statistics (word count, headings, etc.)
+    Stats {
+        /// Path to the .rdx file
+        file: PathBuf,
+    },
 }
 
 fn main() -> Result<()> {
@@ -86,6 +123,20 @@ fn main() -> Result<()> {
         }
         Commands::Fmt { file, write, check } => {
             cmd_fmt(&file, write, check)?;
+        }
+        Commands::Check {
+            file,
+            schema,
+            links,
+            images,
+        } => {
+            cmd_check(&file, schema.as_deref(), links, images)?;
+        }
+        Commands::Refs { file } => {
+            cmd_refs(&file)?;
+        }
+        Commands::Stats { file } => {
+            cmd_stats(&file)?;
         }
     }
 
@@ -130,10 +181,18 @@ fn cmd_validate(file: &PathBuf, schema: &PathBuf) -> Result<()> {
     // Validate
     let diagnostics = validate(&root, &schema);
 
-    // Print diagnostics to stderr
+    // Print diagnostics to stderr using the format: file:line:col: severity: message
     let mut has_errors = false;
+    let file_str = file.display().to_string();
     for diagnostic in &diagnostics {
-        eprintln!("{:?}", diagnostic);
+        let severity_str = match diagnostic.severity {
+            rdx_schema::Severity::Error => "error",
+            rdx_schema::Severity::Warning => "warning",
+        };
+        eprintln!(
+            "{}:{}:{}: {}: {}",
+            file_str, diagnostic.line, diagnostic.column, severity_str, diagnostic.message
+        );
         if diagnostic.severity == rdx_schema::Severity::Error {
             has_errors = true;
         }
@@ -206,5 +265,76 @@ fn cmd_fmt(file: &PathBuf, write: bool, check: bool) -> Result<()> {
         print!("{}", formatted);
     }
 
+    Ok(())
+}
+
+/// Run full document validation
+fn cmd_check(
+    file: &PathBuf,
+    schema_path: Option<&std::path::Path>,
+    check_links: bool,
+    check_images: bool,
+) -> Result<()> {
+    let content =
+        fs::read_to_string(file).with_context(|| format!("Failed to read file: {:?}", file))?;
+
+    let root = parse_rdx(&content);
+
+    // Optional: schema validation (reuses rdx validate logic).
+    if let Some(schema_p) = schema_path {
+        let schema_content = fs::read_to_string(schema_p)
+            .with_context(|| format!("Failed to read schema file: {:?}", schema_p))?;
+        let schema: Schema =
+            serde_json::from_str(&schema_content).context("Failed to parse schema JSON")?;
+        let schema_diags = validate(&root, &schema);
+        let file_str = file.display().to_string();
+        for d in &schema_diags {
+            let severity_str = match d.severity {
+                rdx_schema::Severity::Error => "error",
+                rdx_schema::Severity::Warning => "warning",
+            };
+            eprintln!("{}: {}: {}", file_str, severity_str, d.message);
+        }
+    }
+
+    // Run all check passes.
+    let opts = check::CheckOptions {
+        check_links,
+        check_images,
+    };
+
+    let results = check::run_check(&root, file, &opts);
+    let file_str = file.display().to_string();
+
+    for diag in &results.diagnostics {
+        eprintln!("{}:{}:{}: {}: {}", file_str, diag.line, diag.column, diag.severity, diag.message);
+    }
+
+    if results.has_errors {
+        std::process::exit(1);
+    }
+
+    Ok(())
+}
+
+/// List all labels, cross-references, and citations
+fn cmd_refs(file: &PathBuf) -> Result<()> {
+    let content =
+        fs::read_to_string(file).with_context(|| format!("Failed to read file: {:?}", file))?;
+
+    let root = parse_rdx(&content);
+    let report = refs::collect_refs(&root);
+    print!("{}", refs::format_report(&report));
+    Ok(())
+}
+
+/// Print document statistics
+fn cmd_stats(file: &PathBuf) -> Result<()> {
+    let content =
+        fs::read_to_string(file).with_context(|| format!("Failed to read file: {:?}", file))?;
+
+    let root = parse_rdx(&content);
+    let stats = stats::collect_stats(&root);
+    print!("{}", stats::format_stats(&stats));
     Ok(())
 }
