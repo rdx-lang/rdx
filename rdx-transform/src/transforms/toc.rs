@@ -13,10 +13,12 @@ use crate::{Transform, collect_text, synthetic_pos, walk};
 ///
 /// - `min_depth` / `max_depth`: heading levels to include (default: 2..=3)
 /// - `auto_insert`: whether to insert TOC when no placeholder exists (default: false)
+/// - `numbered`: if true, prefix entries with hierarchical numbers (1, 1.1, 1.1.2)
 pub struct TableOfContents {
     pub min_depth: u8,
     pub max_depth: u8,
     pub auto_insert: bool,
+    pub numbered: bool,
 }
 
 impl Default for TableOfContents {
@@ -25,6 +27,7 @@ impl Default for TableOfContents {
             min_depth: 2,
             max_depth: 3,
             auto_insert: false,
+            numbered: false,
         }
     }
 }
@@ -35,6 +38,8 @@ struct TocEntry {
     depth: u8,
     text: String,
     id: Option<String>,
+    /// Hierarchical number like "1.2.3", set when `numbered` is true.
+    number: Option<String>,
 }
 
 impl Transform for TableOfContents {
@@ -43,9 +48,13 @@ impl Transform for TableOfContents {
     }
 
     fn transform(&self, root: &mut Root, _source: &str) {
-        let entries = collect_headings(&root.children, self.min_depth, self.max_depth);
+        let mut entries = collect_headings(&root.children, self.min_depth, self.max_depth);
         if entries.is_empty() {
             return;
+        }
+
+        if self.numbered {
+            assign_numbers(&mut entries);
         }
 
         let toc_node = build_toc_list(&entries);
@@ -75,10 +84,33 @@ fn collect_headings(nodes: &[Node], min: u8, max: u8) -> Vec<TocEntry> {
                 depth,
                 text: collect_text(&h.children),
                 id: h.id.clone(),
+                number: None,
             });
         }
     });
     entries
+}
+
+/// Assign hierarchical numbers (1, 1.1, 1.1.2, 2, 2.1, etc.) to TOC entries.
+fn assign_numbers(entries: &mut [TocEntry]) {
+    if entries.is_empty() {
+        return;
+    }
+    let base_depth = entries.iter().map(|e| e.depth).min().unwrap();
+    // Counters indexed by relative depth (0 = shallowest heading in range)
+    let mut counters = vec![0u32; 7]; // supports up to 6 nesting levels
+
+    for entry in entries.iter_mut() {
+        let rel = (entry.depth - base_depth) as usize;
+        counters[rel] += 1;
+        // Reset all deeper counters
+        for c in counters.iter_mut().skip(rel + 1) {
+            *c = 0;
+        }
+        // Build number string from counters[0..=rel]
+        let parts: Vec<String> = counters[..=rel].iter().map(|n| n.to_string()).collect();
+        entry.number = Some(parts.join("."));
+    }
 }
 
 fn build_toc_list(entries: &[TocEntry]) -> Node {
@@ -95,11 +127,16 @@ fn build_toc_list(entries: &[TocEntry]) -> Node {
             .map(|id| format!("#{}", id))
             .unwrap_or_default();
 
+        let display = match &entry.number {
+            Some(num) => format!("{} {}", num, entry.text),
+            None => entry.text.clone(),
+        };
+
         let link = Node::Link(LinkNode {
             url: href,
             title: None,
             children: vec![Node::Text(TextNode {
-                value: entry.text.clone(),
+                value: display,
                 position: pos.clone(),
             })],
             position: pos.clone(),
@@ -147,6 +184,7 @@ mod tests {
                 min_depth: 1,
                 max_depth: 3,
                 auto_insert: true,
+                numbered: false,
             })
             .run("# Intro\n\n## Setup\n\n### Details\n\n## Usage\n");
 
@@ -180,6 +218,46 @@ mod tests {
             "TOC should replace placeholder: {:?}",
             root.children
         );
+    }
+
+    #[test]
+    fn numbered_toc() {
+        let root = Pipeline::new()
+            .add(AutoSlug::new())
+            .add(TableOfContents {
+                min_depth: 1,
+                max_depth: 3,
+                auto_insert: true,
+                numbered: true,
+            })
+            .run("# Intro\n\n## Setup\n\n### Details\n\n## Usage\n\n# Advanced\n\n## Config\n");
+
+        // First child should be the TOC
+        if let Node::Component(c) = &root.children[0] {
+            if let Node::List(l) = &c.children[0] {
+                // Extract link text from each list item
+                let texts: Vec<String> = l
+                    .children
+                    .iter()
+                    .filter_map(|item| {
+                        if let Node::ListItem(li) = item {
+                            if let Node::Link(link) = &li.children[0] {
+                                if let Node::Text(t) = &link.children[0] {
+                                    return Some(t.value.clone());
+                                }
+                            }
+                        }
+                        None
+                    })
+                    .collect();
+                assert_eq!(texts[0], "1 Intro");
+                assert_eq!(texts[1], "1.1 Setup");
+                assert_eq!(texts[2], "1.1.1 Details");
+                assert_eq!(texts[3], "1.2 Usage");
+                assert_eq!(texts[4], "2 Advanced");
+                assert_eq!(texts[5], "2.1 Config");
+            }
+        }
     }
 
     #[test]

@@ -250,6 +250,43 @@ pub fn standard_schema() -> Schema {
                 .prop("path", PropSchema::required(PropType::String).with_description("URL path pattern"))
                 .description("Documents an API endpoint"),
         )
+        // ------------------------------------------------------------------
+        // 7.12 Index & Glossary
+        // ------------------------------------------------------------------
+        .component(
+            "Index",
+            ComponentSchema::new()
+                .prop("term", PropSchema::required(PropType::String).with_description("Primary index term"))
+                .prop("sub", PropSchema::optional(PropType::String).with_description("Sub-entry under the primary term"))
+                .description("Marks inline text for back-of-book index generation"),
+        )
+        .component(
+            "IndexList",
+            ComponentSchema::new()
+                .self_closing(true)
+                .description("Marks where the generated alphabetical index should appear"),
+        )
+        .component(
+            "Term",
+            ComponentSchema::new()
+                .prop("id", PropSchema::required(PropType::String).with_description("Unique glossary term identifier"))
+                .description("Defines a glossary term inline; collected by <Glossary />"),
+        )
+        .component(
+            "Glossary",
+            ComponentSchema::new()
+                .self_closing(true)
+                .description("Renders an alphabetized list of all <Term> definitions in the document"),
+        )
+        // ------------------------------------------------------------------
+        // 7.13 Translation
+        // ------------------------------------------------------------------
+        .component(
+            "Trans",
+            ComponentSchema::new()
+                .prop("id", PropSchema::required(PropType::String).with_description("Translation key identifier"))
+                .description("Marks translatable content for i18n workflows"),
+        )
         .component(
             "ApiParam",
             ComponentSchema::new()
@@ -679,6 +716,56 @@ mod tests {
     // ---------------------------------------------------------------------------
     // Self-closing constraint respected
     // ---------------------------------------------------------------------------
+
+    #[test]
+    fn index_with_term_is_valid() {
+        let diags = check("<Index term=\"parser\">\nrecursive descent parser\n</Index>\n");
+        assert!(diags.is_empty(), "unexpected diagnostics: {diags:?}");
+    }
+
+    #[test]
+    fn index_with_sub_is_valid() {
+        let diags = check("<Index term=\"parser\" sub=\"recursive descent\">\nparser\n</Index>\n");
+        assert!(diags.is_empty(), "unexpected diagnostics: {diags:?}");
+    }
+
+    #[test]
+    fn index_without_term_produces_error() {
+        let diags = check("<Index>\ntext\n</Index>\n");
+        assert!(diags.iter().any(|d| d.message.contains("term") && d.message.contains("required")),
+            "expected missing term error, got: {diags:?}");
+    }
+
+    #[test]
+    fn index_list_self_closing_is_valid() {
+        let diags = check("<IndexList />\n");
+        assert!(diags.is_empty(), "unexpected diagnostics: {diags:?}");
+    }
+
+    #[test]
+    fn glossary_self_closing_is_valid() {
+        let diags = check("<Glossary />\n");
+        assert!(diags.is_empty(), "unexpected diagnostics: {diags:?}");
+    }
+
+    #[test]
+    fn term_with_id_is_valid() {
+        let diags = check("<Term id=\"api\">\nApplication Programming Interface\n</Term>\n");
+        assert!(diags.is_empty(), "unexpected diagnostics: {diags:?}");
+    }
+
+    #[test]
+    fn term_without_id_produces_error() {
+        let diags = check("<Term>\nSome term\n</Term>\n");
+        assert!(diags.iter().any(|d| d.message.contains("id") && d.message.contains("required")),
+            "expected missing id error, got: {diags:?}");
+    }
+
+    #[test]
+    fn trans_with_id_is_valid() {
+        let diags = check("<Trans id=\"greeting\">\nHello, world!\n</Trans>\n");
+        assert!(diags.is_empty(), "unexpected diagnostics: {diags:?}");
+    }
 
     #[test]
     fn page_break_with_children_produces_error() {

@@ -4,6 +4,7 @@ pub use rdx_parser::parse;
 mod transforms;
 pub use transforms::abbreviation::AbbreviationExpand;
 pub use transforms::auto_number::{AutoNumber, NumberEntry, NumberRegistry};
+pub use transforms::citation_resolve::{BibEntry, CitationResolve, CitationStyle};
 pub use transforms::cross_ref_resolve::CrossRefResolve;
 pub use transforms::print_fallback::PrintFallback;
 pub use transforms::slug::AutoSlug;
