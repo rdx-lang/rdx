@@ -1,35 +1,10 @@
 use rdx_ast::{Node, Root};
-use std::collections::HashMap;
 
-use crate::ast_util::walk_nodes;
+use crate::ast_util::{collect_labels, walk_nodes, LabelEntry, LabelKind};
 
 // ---------------------------------------------------------------------------
 // Data types
 // ---------------------------------------------------------------------------
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum LabelKind {
-    Heading,
-    Component,
-    Math,
-}
-
-impl std::fmt::Display for LabelKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            LabelKind::Heading => write!(f, "heading"),
-            LabelKind::Component => write!(f, "component"),
-            LabelKind::Math => write!(f, "math"),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct LabelInfo {
-    pub key: String,
-    pub kind: LabelKind,
-    pub line: usize,
-}
 
 #[derive(Debug, Clone)]
 pub struct CrossRefInfo {
@@ -49,7 +24,7 @@ pub struct CitationInfo {
 
 #[derive(Debug, Default)]
 pub struct RefsReport {
-    pub labels: Vec<LabelInfo>,
+    pub labels: Vec<LabelEntry>,
     pub cross_refs: Vec<CrossRefInfo>,
     pub citations: Vec<CitationInfo>,
 }
@@ -58,62 +33,16 @@ pub struct RefsReport {
 // Collection
 // ---------------------------------------------------------------------------
 
-/// Collect all labels, cross-references, and citation keys from `root` in a
-/// single pass. Returns a [`RefsReport`] suitable for display or further
-/// analysis.
+/// Collect all labels, cross-references, and citation keys from `root`.
+/// Returns a [`RefsReport`] suitable for display or further analysis.
 pub fn collect_refs(root: &Root) -> RefsReport {
-    // --- Pass 1: collect labels ---
-    let mut label_map: HashMap<String, LabelInfo> = HashMap::new();
+    // --- Labels (shared implementation) ---
+    let label_map = collect_labels(root);
 
-    walk_nodes(&root.children, &mut |node| match node {
-        Node::Heading(b) => {
-            if let Some(ref id) = b.id {
-                label_map.insert(
-                    id.clone(),
-                    LabelInfo {
-                        key: id.clone(),
-                        kind: LabelKind::Heading,
-                        line: b.position.start.line,
-                    },
-                );
-            }
-        }
-        Node::Component(c) => {
-            for attr in &c.attributes {
-                if attr.name == "id" {
-                    if let rdx_ast::AttributeValue::String(ref id) = attr.value {
-                        label_map.insert(
-                            id.clone(),
-                            LabelInfo {
-                                key: id.clone(),
-                                kind: LabelKind::Component,
-                                line: c.position.start.line,
-                            },
-                        );
-                    }
-                }
-            }
-        }
-        Node::MathDisplay(m) => {
-            if let Some(ref label) = m.label {
-                label_map.insert(
-                    label.clone(),
-                    LabelInfo {
-                        key: label.clone(),
-                        kind: LabelKind::Math,
-                        line: m.position.start.line,
-                    },
-                );
-            }
-        }
-        _ => {}
-    });
-
-    // Sort labels by line for predictable output.
-    let mut labels: Vec<LabelInfo> = label_map.values().cloned().collect();
+    let mut labels: Vec<LabelEntry> = label_map.values().cloned().collect();
     labels.sort_by_key(|l| l.line);
 
-    // --- Pass 2: collect cross-refs ---
+    // --- Cross-references ---
     let mut cross_refs: Vec<CrossRefInfo> = Vec::new();
     walk_nodes(&root.children, &mut |node| {
         if let Node::CrossRef(cr) = node {
@@ -128,7 +57,7 @@ pub fn collect_refs(root: &Root) -> RefsReport {
     });
     cross_refs.sort_by_key(|r| r.line);
 
-    // --- Pass 3: collect citations ---
+    // --- Citations ---
     let mut citations: Vec<CitationInfo> = Vec::new();
     walk_nodes(&root.children, &mut |node| {
         if let Node::Citation(c) = node {
@@ -201,7 +130,6 @@ pub fn format_report(report: &RefsReport) -> String {
             let target_display = format!("{{@{}}}", cr.target);
             let resolution = match (&cr.target_kind, cr.defined_line) {
                 (Some(kind), Some(def_line)) => {
-                    // Capitalise kind for display.
                     let kind_str = match kind {
                         LabelKind::Heading => "Heading",
                         LabelKind::Component => "Component",

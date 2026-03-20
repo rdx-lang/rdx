@@ -2,7 +2,7 @@ use rdx_ast::{Node, Root};
 use std::collections::HashMap;
 use std::path::Path;
 
-use crate::ast_util::walk_nodes;
+use crate::ast_util::{collect_labels, walk_nodes, LabelEntry, LabelKind};
 
 // ---------------------------------------------------------------------------
 // Diagnostic types
@@ -44,99 +44,11 @@ impl std::fmt::Display for CheckDiagnostic {
 }
 
 // ---------------------------------------------------------------------------
-// Label kinds (for reporting)
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum LabelKind {
-    Heading,
-    Component,
-    Math,
-}
-
-impl std::fmt::Display for LabelKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            LabelKind::Heading => write!(f, "heading"),
-            LabelKind::Component => write!(f, "component"),
-            LabelKind::Math => write!(f, "math"),
-        }
-    }
-}
-
-/// Metadata about a defined label in the document.
-#[derive(Debug, Clone)]
-pub struct LabelEntry {
-    /// The semantic kind of the label (heading, component, math).
-    pub kind: LabelKind,
-    /// Source line where the label is defined (1-indexed).
-    pub line: usize,
-    /// Source column where the label is defined (1-indexed).
-    pub column: usize,
-}
-
-// ---------------------------------------------------------------------------
-// Label and cross-reference collection
-// ---------------------------------------------------------------------------
-
-/// Collect all defined labels from headings, components with `id`, and
-/// `MathDisplay` nodes with `label`.
-pub fn collect_labels(root: &Root) -> HashMap<String, LabelEntry> {
-    let mut labels: HashMap<String, LabelEntry> = HashMap::new();
-
-    walk_nodes(&root.children, &mut |node| match node {
-        Node::Heading(b) => {
-            if let Some(ref id) = b.id {
-                labels.insert(
-                    id.clone(),
-                    LabelEntry {
-                        kind: LabelKind::Heading,
-                        line: b.position.start.line,
-                        column: b.position.start.column,
-                    },
-                );
-            }
-        }
-        Node::Component(c) => {
-            for attr in &c.attributes {
-                if attr.name == "id" {
-                    if let rdx_ast::AttributeValue::String(ref id) = attr.value {
-                        labels.insert(
-                            id.clone(),
-                            LabelEntry {
-                                kind: LabelKind::Component,
-                                line: c.position.start.line,
-                                column: c.position.start.column,
-                            },
-                        );
-                    }
-                }
-            }
-        }
-        Node::MathDisplay(m) => {
-            if let Some(ref label) = m.label {
-                labels.insert(
-                    label.clone(),
-                    LabelEntry {
-                        kind: LabelKind::Math,
-                        line: m.position.start.line,
-                        column: m.position.start.column,
-                    },
-                );
-            }
-        }
-        _ => {}
-    });
-
-    labels
-}
-
-// ---------------------------------------------------------------------------
 // Cross-reference checking
 // ---------------------------------------------------------------------------
 
 /// Check that every `{@target}` cross-reference in `root` resolves to a
-/// defined label in `labels`. Returns an [`CheckSeverity::Error`] diagnostic
+/// defined label in `labels`. Returns a [`CheckSeverity::Error`] diagnostic
 /// for each undefined reference.
 pub fn check_cross_refs(
     root: &Root,
@@ -216,12 +128,15 @@ pub fn check_citations(root: &Root) -> Vec<CheckDiagnostic> {
                         }
                     }
                 }
-                Err(_) => {
+                Err(e) => {
                     diagnostics.push(CheckDiagnostic {
                         line: 1,
                         column: 1,
                         severity: CheckSeverity::Error,
-                        message: format!("bibliography file \"{}\" could not be read", bib),
+                        message: format!(
+                            "bibliography file \"{}\" could not be read: {}",
+                            bib, e
+                        ),
                     });
                 }
             }
@@ -286,6 +201,11 @@ fn parse_bib_keys(content: &str) -> std::collections::HashSet<String> {
 // Link checking
 // ---------------------------------------------------------------------------
 
+/// Check that all links in the document resolve correctly.
+///
+/// Internal anchor links (`#fragment`) are checked against the label map.
+/// Relative file links (`./` or `../`) are checked for existence on disk.
+/// Absolute URLs (`http://`, `https://`) are not checked.
 pub fn check_links(
     root: &Root,
     labels: &HashMap<String, LabelEntry>,
@@ -333,6 +253,11 @@ pub fn check_links(
 // Image checking
 // ---------------------------------------------------------------------------
 
+/// Check that image references are valid.
+///
+/// Emits a [`CheckSeverity::Warning`] for images with empty or missing alt
+/// text, and a [`CheckSeverity::Error`] for relative image paths that do not
+/// exist on disk. Absolute URLs and `data:` URIs are not checked.
 pub fn check_images(root: &Root, doc_path: &Path) -> Vec<CheckDiagnostic> {
     let mut diagnostics = Vec::new();
     let doc_dir = doc_path.parent().unwrap_or(Path::new("."));
@@ -376,6 +301,11 @@ pub fn check_images(root: &Root, doc_path: &Path) -> Vec<CheckDiagnostic> {
 // Heading level checking
 // ---------------------------------------------------------------------------
 
+/// Check heading hierarchy for common issues.
+///
+/// Emits a [`CheckSeverity::Warning`] when:
+/// - The document contains more than one h1 heading.
+/// - A heading skips one or more levels (e.g. h1 followed by h3).
 pub fn check_heading_levels(root: &Root) -> Vec<CheckDiagnostic> {
     let mut diagnostics = Vec::new();
     let mut h1_count = 0usize;
