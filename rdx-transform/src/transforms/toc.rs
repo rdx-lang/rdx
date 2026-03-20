@@ -1,6 +1,6 @@
 use rdx_ast::*;
 
-use crate::{Transform, collect_text, walk};
+use crate::{Transform, collect_text, synthetic_pos, walk};
 
 /// Generates a table of contents from document headings and inserts it
 /// as a `<TableOfContents>` component node.
@@ -84,20 +84,9 @@ fn collect_headings(nodes: &[Node], min: u8, max: u8) -> Vec<TocEntry> {
 fn build_toc_list(entries: &[TocEntry]) -> Node {
     // Build a flat list of links, using depth for nested structure
     let mut items = Vec::new();
-    // Synthetic position for generated nodes — use usize::MAX to clearly
-    // distinguish from parser-produced positions (which are 1-based).
-    let pos = Position {
-        start: Point {
-            line: usize::MAX,
-            column: usize::MAX,
-            offset: usize::MAX,
-        },
-        end: Point {
-            line: usize::MAX,
-            column: usize::MAX,
-            offset: usize::MAX,
-        },
-    };
+    // Synthetic position for generated nodes (line 0 / col 0 / offset 0
+    // distinguishes them from parser-produced positions, which are 1-based).
+    let pos = synthetic_pos();
 
     for entry in entries {
         let href = entry
